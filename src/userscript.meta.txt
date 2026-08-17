@@ -1,0 +1,17 @@
+// ==UserScript==
+// @name         Instagram Capture Utility
+// @namespace    https://github.com/adojos/tm-save-instagram-media
+// @version      0.1.0
+// @description  Capture Instagram media and metadata to Obsidian or a local folder.
+// @author       Tushar Sharma
+// @homepageURL  https://github.com/adojos/tm-save-instagram-media
+// @supportURL   https://github.com/adojos/tm-save-instagram-media/issues
+// @match        https://www.instagram.com/*
+// @grant        GM_registerMenuCommand
+// @grant        GM_xmlhttpRequest
+// @connect      instagram.com
+// @connect      cdninstagram.com
+// @connect      fbcdn.net
+// @run-at       document-idle
+// @noframes
+// ==/UserScript==

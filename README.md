@@ -10,7 +10,9 @@ The utility is designed around two explicit workflows:
 | Download only | A dedicated per-item directory containing media only |
 
 > [!IMPORTANT]
-> This project is currently in the architecture-complete, pre-implementation stage. The authoritative design is documented and development of the userscript foundation is next.
+> The architecture is complete and the executable userscript foundation is
+> now in place. Capture extraction and storage workflows are under active
+> development and are not yet exposed in the page UI.
 
 ## Design goals
 
@@ -62,6 +64,7 @@ The Markdown note can live anywhere inside the configured vault. Download-only c
 - [Requirements](docs/Requirements.md)
 - [Architecture](docs/Architecture.md)
 - [Architecture decisions](docs/Decisions.md)
+- [Local development](docs/Development.md)
 
 These documents are authoritative. Architectural deviations must be documented before implementation.
 

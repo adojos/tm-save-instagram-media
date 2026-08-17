@@ -1,0 +1,21 @@
+{
+  "name": "tm-save-instagram-media",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tampermonkey utility for capturing Instagram media and metadata.",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:watch": "node scripts/build.mjs --watch",
+    "test": "node --test",
+    "test:watch": "node --test --watch",
+    "check": "npm run test && npm run build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  },
+  "license": "MIT"
+}
