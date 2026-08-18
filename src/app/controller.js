@@ -5,6 +5,10 @@ import {
 } from "../runtime/capabilities.js";
 import { detectInstagramItemRoute } from "../instagram/item-route.js";
 import { extractInstagramMetadata } from "../instagram/metadata.js";
+import {
+  classifyMediaProbe,
+  collectInstagramMediaProbe,
+} from "../instagram/media-probe.js";
 
 export class ApplicationController {
   #globalScope;
@@ -102,7 +106,20 @@ export class ApplicationController {
       itemRoute,
     });
 
+    const mediaProbe = collectInstagramMediaProbe(
+      this.#globalScope?.document,
+      {
+        width: this.#globalScope?.innerWidth,
+        height: this.#globalScope?.innerHeight,
+      },
+    );
+    const classification = classifyMediaProbe({ itemRoute, probe: mediaProbe });
+
     this.#logger.info("Current Instagram metadata", metadata);
+    this.#logger.info("Current Instagram media probe", {
+      classification,
+      mediaProbe,
+    });
 
     if (typeof console.table === "function") {
       console.table({
@@ -114,9 +131,30 @@ export class ApplicationController {
         proposedTitle: metadata.proposedTitle,
         authorSource: metadata.sources.author,
         captionSource: metadata.sources.caption,
+        detectedContentType: classification.contentType,
+        classificationConfidence: classification.confidence,
+        mediaCandidates: mediaProbe.candidates.length,
+        substantialCandidates: classification.substantialCandidateCount,
+        probeRegion: mediaProbe.regionKind,
+        carouselControls: mediaProbe.carouselControlLabels.join(", ") ||
+          "(none)",
       });
+
+      console.table(mediaProbe.candidates.map((candidate) => ({
+        index: candidate.index,
+        type: candidate.mediaType,
+        intrinsic: candidate.intrinsicWidth + "x" + candidate.intrinsicHeight,
+        rendered: candidate.renderedWidth + "x" + candidate.renderedHeight,
+        visible: candidate.visible,
+        inViewport: candidate.inViewport,
+        substantial: candidate.substantial,
+        hasSource: Boolean(candidate.source),
+        sourceKey: candidate.sourceFingerprint,
+        hasPoster: Boolean(candidate.poster),
+        alt: candidate.alt.slice(0, 80),
+      })));
     }
 
-    return Object.freeze({ itemRoute, metadata });
+    return Object.freeze({ itemRoute, metadata, mediaProbe, classification });
   }
 }
