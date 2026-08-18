@@ -123,7 +123,55 @@ test("one substantial post image classifies as a single image", () => {
   });
 
   assert.equal(classification.contentType, "image");
+  assert.equal(classification.confidence, "single-media");
   assert.equal(classification.substantialCandidateCount, 1);
+});
+
+test("a dominant post image is not confused with recommendation tiles", () => {
+  const probe = collectInstagramMediaProbe(documentFixture(articleFixture({
+    media: [
+      mediaElement({
+        source: "https://cdn.example/post.jpg",
+        renderedWidth: 600,
+        renderedHeight: 700,
+      }),
+      mediaElement({
+        source: "https://cdn.example/recommendation-one.jpg",
+        renderedWidth: 300,
+        renderedHeight: 400,
+      }),
+      mediaElement({
+        source: "https://cdn.example/recommendation-two.jpg",
+        renderedWidth: 300,
+        renderedHeight: 400,
+      }),
+    ],
+  })));
+  const classification = classifyMediaProbe({
+    itemRoute: { routeKind: "post" },
+    probe,
+  });
+
+  assert.equal(classification.contentType, "image");
+  assert.equal(classification.confidence, "dominant-media");
+  assert.equal(classification.selectedCandidateIndex, 1);
+});
+
+test("multiple similar images without carousel controls remain ambiguous", () => {
+  const probe = collectInstagramMediaProbe(documentFixture(articleFixture({
+    media: [
+      mediaElement({ source: "https://cdn.example/one.jpg" }),
+      mediaElement({ source: "https://cdn.example/two.jpg" }),
+    ],
+  })));
+  const classification = classifyMediaProbe({
+    itemRoute: { routeKind: "post" },
+    probe,
+  });
+
+  assert.equal(classification.contentType, "unsupported");
+  assert.equal(classification.confidence, "ambiguous-media");
+  assert.equal(classification.selectedCandidateIndex, null);
 });
 
 test("a reel requires a substantial video candidate", () => {

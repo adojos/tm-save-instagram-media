@@ -221,22 +221,46 @@ export function classifyMediaProbe({ itemRoute, probe }) {
 
   const hasCarouselControl = probe.carouselControlLabels.length > 0;
 
-  if (hasCarouselControl || substantialCandidates.length > 1) {
+  if (hasCarouselControl) {
     return Object.freeze({
       contentType: "carousel",
-      confidence: hasCarouselControl ? "semantic-control" : "media-count",
+      confidence: "semantic-control",
       substantialCandidateCount: substantialCandidates.length,
     });
   }
 
-  const onlyCandidate = substantialCandidates[0];
-  const contentType = onlyCandidate?.mediaType === "image"
-    ? "image"
-    : "unsupported";
+  const rankedCandidates = [...substantialCandidates].sort(
+    (left, right) =>
+      (right.renderedWidth * right.renderedHeight) -
+      (left.renderedWidth * left.renderedHeight),
+  );
+  const dominantCandidate = rankedCandidates[0];
+  const runnerUp = rankedCandidates[1];
+  const dominantArea = dominantCandidate
+    ? dominantCandidate.renderedWidth * dominantCandidate.renderedHeight
+    : 0;
+  const runnerUpArea = runnerUp
+    ? runnerUp.renderedWidth * runnerUp.renderedHeight
+    : 0;
+  const isUnambiguousImage = dominantCandidate?.mediaType === "image" && (
+    !runnerUp || dominantArea >= runnerUpArea * 1.25
+  );
 
   return Object.freeze({
-    contentType,
-    confidence: onlyCandidate ? "single-media" : "insufficient-evidence",
+    contentType: isUnambiguousImage ? "image" : "unsupported",
+    confidence: isUnambiguousImage
+      ? runnerUp
+        ? "dominant-media"
+        : "single-media"
+      : substantialCandidates.length
+        ? "ambiguous-media"
+        : "insufficient-evidence",
     substantialCandidateCount: substantialCandidates.length,
+    selectedCandidateIndex: isUnambiguousImage
+      ? dominantCandidate.index
+      : null,
+    selectedSourceFingerprint: isUnambiguousImage
+      ? dominantCandidate.sourceFingerprint
+      : null,
   });
 }

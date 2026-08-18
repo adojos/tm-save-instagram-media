@@ -25,6 +25,11 @@ make duplicate candidates visible in diagnostics. Carousel traversal and final
 URL selection remain separate work and must not assume the probe candidates are
 complete.
 
+Without semantic carousel controls, page-wide media count is never treated as
+carousel evidence. A single-image post requires one image to be clearly
+dominant by rendered area; otherwise classification stops as ambiguous. This
+prevents recommendation grids from being mistaken for carousel slides.
+
 `carousel-traversal.js` owns the bounded traversal state machine: it rewinds to
 the first slide, collects ordered primary media, detects stalled transitions
 and loops, enforces a maximum, and attempts to restore the user's original

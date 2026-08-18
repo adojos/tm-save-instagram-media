@@ -141,6 +141,10 @@ export class ApplicationController {
         captionSource: metadata.sources.caption,
         detectedContentType: classification.contentType,
         classificationConfidence: classification.confidence,
+        selectedMediaCandidate: classification.selectedCandidateIndex ??
+          "(none)",
+        selectedMediaSource: classification.selectedSourceFingerprint ??
+          "(none)",
         mediaCandidates: mediaProbe.candidates.length,
         substantialCandidates: classification.substantialCandidateCount,
         probeRegion: mediaProbe.regionKind,
