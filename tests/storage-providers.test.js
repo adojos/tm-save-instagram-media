@@ -19,6 +19,11 @@ function successfulDownloader() {
   return { async download() { return { extension: "jpg", blob: new Blob(["image"]) }; } };
 }
 
+async function createMediaRoot(fileSystem, root, name = "Media") {
+  const handle = await fileSystem.getDirectoryPath(root, [name, "Instagram"], { create: true });
+  return { handle, segments: [name, "Instagram"] };
+}
+
 test("Mode B creates numbered per-item directories and media only", async () => {
   const { fileSystem, root } = createFakeFileSystem();
   const provider = createDownloadStorageProvider({ fileSystem, downloader: successfulDownloader() });
@@ -34,18 +39,22 @@ test("Mode B creates numbered per-item directories and media only", async () => 
 test("Mode A writes marker, media, Markdown, complete marker, then cleans up", async () => {
   const { fileSystem, root } = createFakeFileSystem();
   const notes = await fileSystem.getDirectory(root, "Notes", { create: true });
+  const mediaRoot = await createMediaRoot(fileSystem, root, "MEDIA");
   const provider = createObsidianStorageProvider({
     fileSystem, downloader: successfulDownloader(), now: () => "2026-08-18T12:00:00.000Z",
   });
   const result = await provider.save({
     captureItem: imageCapture(), title: "Title", vault: root,
+    mediaRoot,
     noteDirectory: notes, noteDirectorySegments: ["Notes"],
     onNoteCollision: async () => "cancel", onRecovery: async () => "cancel",
   });
 
   assert.equal(result.notePath, "Notes/Title.md");
-  assert.match(await fileSystem.readText(notes, "Title.md"), /instagram_id: "ABC123"/u);
-  const instagram = await fileSystem.getDirectoryPath(root, ["media", "Instagram"]);
+  const markdown = await fileSystem.readText(notes, "Title.md");
+  assert.match(markdown, /instagram_id: "ABC123"/u);
+  assert.match(markdown, /!\[\[MEDIA\/Instagram\/Title - ABC123\/ABC123-01\.jpg\]\]/u);
+  const instagram = await fileSystem.getDirectoryPath(root, ["MEDIA", "Instagram"]);
   const post = await fileSystem.getDirectory(instagram, "Title - ABC123");
   assert.equal(await fileSystem.fileExists(post, "ABC123-01.jpg"), true);
   assert.equal(await fileSystem.fileExists(post, COMPLETE_MARKER), true);
@@ -53,6 +62,7 @@ test("Mode A writes marker, media, Markdown, complete marker, then cleans up", a
 
   await assert.rejects(provider.save({
     captureItem: imageCapture(), title: "Renamed", vault: root,
+    mediaRoot,
     noteDirectory: notes, noteDirectorySegments: ["Notes"],
   }), (error) => error.code === "DUPLICATE_CAPTURE");
 });
@@ -60,6 +70,7 @@ test("Mode A writes marker, media, Markdown, complete marker, then cleans up", a
 test("Mode A recovers only after matching incomplete marker and confirmation", async () => {
   const { fileSystem, root } = createFakeFileSystem();
   const notes = await fileSystem.getDirectory(root, "Notes", { create: true });
+  const mediaRoot = await createMediaRoot(fileSystem, root);
   const failing = createObsidianStorageProvider({
     fileSystem,
     downloader: { async download() { throw new Error("interrupted"); } },
@@ -67,10 +78,11 @@ test("Mode A recovers only after matching incomplete marker and confirmation", a
   });
   await assert.rejects(failing.save({
     captureItem: imageCapture(), title: "Title", vault: root,
+    mediaRoot,
     noteDirectory: notes, noteDirectorySegments: ["Notes"],
   }), /interrupted/u);
 
-  const instagram = await fileSystem.getDirectoryPath(root, ["media", "Instagram"]);
+  const instagram = await fileSystem.getDirectoryPath(root, ["Media", "Instagram"]);
   const post = await fileSystem.getDirectory(instagram, "Title - ABC123");
   assert.equal(await fileSystem.fileExists(post, INCOMPLETE_MARKER), true);
 
@@ -79,6 +91,7 @@ test("Mode A recovers only after matching incomplete marker and confirmation", a
   });
   const result = await recovered.save({
     captureItem: imageCapture(), title: "Title", vault: root,
+    mediaRoot,
     onRecovery: async () => "continue",
   });
   assert.equal(result.notePath, "Notes/Title.md");
@@ -87,13 +100,14 @@ test("Mode A recovers only after matching incomplete marker and confirmation", a
 
 test("Mode A refuses an existing untracked managed directory", async () => {
   const { fileSystem, root } = createFakeFileSystem();
-  const mediaRoot = await fileSystem.getDirectoryPath(root, ["media", "Instagram"], { create: true });
-  await fileSystem.getDirectory(mediaRoot, "Title - ABC123", { create: true });
+  const mediaRoot = await createMediaRoot(fileSystem, root);
+  await fileSystem.getDirectory(mediaRoot.handle, "Title - ABC123", { create: true });
   const notes = await fileSystem.getDirectory(root, "Notes", { create: true });
   const provider = createObsidianStorageProvider({ fileSystem, downloader: successfulDownloader() });
 
   await assert.rejects(provider.save({
     captureItem: imageCapture(), title: "Title", vault: root,
+    mediaRoot,
     noteDirectory: notes, noteDirectorySegments: ["Notes"],
   }), (error) => error.code === "CAPTURE_STATE_CONFLICT");
 });

@@ -22,7 +22,11 @@ The capture dialog supports two modes:
 | Save to Obsidian | Local media, structured Markdown, YAML metadata, and vault-relative embeds |
 | Download only | A dedicated per-item directory containing media only |
 
-On the first Obsidian capture, select the root of the vault. The application-owned folder browser then presents note destinations only from inside that vault. The selected vault and most recent note folder are remembered locally.
+On the first Obsidian capture, select the root of the vault—not a note folder.
+The utility reuses a first-level `Media` directory when present. Otherwise it
+offers to create `Media` at the vault root or beneath another folder selected
+through the vault browser. The Markdown-note destination is selected
+separately and may be anywhere inside the vault.
 
 ## Supported captures
 
@@ -36,16 +40,21 @@ On the first Obsidian capture, select the root of the vault. The application-own
 
 ## Storage model
 
-Obsidian captures use the fixed v1 vault-relative media root:
+The conventional Obsidian media hierarchy is:
 
-    media/
+    Media/
     └── Instagram/
         └── <Sanitised Title> - <PostID>/
             ├── <PostID>-01.jpg
             ├── <PostID>-02.mp4
             └── .capture-complete.json
 
-The Markdown note may live in any folder selected through the vault browser. Download-only mode creates `<Sanitised Title> - <PostID>` beneath a parent directory chosen with the native directory picker; later collisions receive ` - 2`, ` - 3`, and so on.
+The `Media` folder may instead live beneath another explicitly selected vault
+folder. Its resolved vault-relative `Instagram` path is remembered in
+IndexedDB. The Markdown note may live independently in any folder selected
+through the vault browser. Download-only mode creates
+`<Sanitised Title> - <PostID>` beneath a parent directory chosen with the
+native directory picker; later collisions receive ` - 2`, ` - 3`, and so on.
 
 ## Recovery and safety
 
@@ -61,8 +70,15 @@ The Markdown note may live in any folder selected through the vault browser. Dow
 - Instagram is an evolving single-page application; future DOM changes may require extractor updates.
 - Captures require an authenticated Instagram session and an individual post or reel context.
 - Local folder and Obsidian modes require the File System Access API available in current Chromium-based desktop browsers.
-- The v1 media root is fixed at `media/Instagram/`; it is represented centrally so a later version can expose configuration.
+- Media discovery checks only the vault root's immediate children; deeper locations require explicit selection through the vault browser.
 - Instagram media is held in memory while a capture is being assembled, so very large videos may temporarily use substantial browser memory.
+
+## Upgrading from v1.0
+
+The first v1.1 Obsidian capture confirms the cached vault root and resolves the
+Media location under the new rules. Existing folders created under an
+incorrectly selected note subfolder are left untouched; the utility never
+deletes or moves them automatically.
 
 ## Development
 

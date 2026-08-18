@@ -6,6 +6,7 @@ export function createCaptureWorkflow({
   fileSystem,
   settingsManager,
   vaultManager,
+  mediaRootManager,
   obsidianStorage,
   downloadStorage,
   buildSnapshot = buildReadOnlyCaptureSnapshot,
@@ -43,9 +44,35 @@ export function createCaptureWorkflow({
           // Permission renewal and any native picker stay directly downstream
           // of the user's Continue action, preserving browser user activation.
           const vault = await vaultManager.getVault();
+          const mediaRoot = await mediaRootManager.resolve({
+            vault,
+            chooseLocation: async () => {
+              const choice = await ui.chooseDecision({
+                title: "Choose Media location",
+                message: "No first-level Media folder exists in this vault. Create it at the vault root or choose another vault folder.",
+                choices: [
+                  { label: "Cancel", value: "cancel" },
+                  { label: "Choose Another Folder", value: "custom" },
+                  { label: "Create at Vault Root", value: "root", primary: true },
+                ],
+              });
+              if (choice === "root") return Object.freeze({ kind: "root" });
+              if (choice !== "custom") return null;
+              const selected = await ui.chooseVaultFolder({
+                rootHandle: vault,
+                fileSystem,
+                title: "Choose parent for Media",
+                allowRoot: false,
+              });
+              return selected
+                ? Object.freeze({ kind: "custom", ...selected })
+                : null;
+            },
+          });
           const preflight = await obsidianStorage.preflight({
             vault,
             postId: snapshot.captureItem.postId,
+            mediaRoot,
           });
           let destination = null;
           if (preflight.kind === "new") {
@@ -65,6 +92,7 @@ export function createCaptureWorkflow({
             captureItem: snapshot.captureItem,
             title: options.title,
             vault,
+            mediaRoot,
             noteDirectory: destination?.handle,
             noteDirectorySegments: destination?.segments ?? [],
             onProgress: (event) => ui.showProgress(event),

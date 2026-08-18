@@ -13,6 +13,7 @@
     <main>
       <h1>Instagram Capture UI Smoke Fixture</h1>
       <p>This local fixture exercises the isolated Shadow DOM interface.</p>
+      <button id="media-browser" type="button">Test Media Folder Browser</button>
     </main>
     <script type="module">
       import { createAppUi } from "../../src/ui/app-ui.js";
@@ -32,6 +33,28 @@
         });
         if (result) ui.notify(result.mode + ": " + result.title);
       }, "Save Carousel");
+
+      const attachments = { kind: "directory", name: "Attachments" };
+      const vault = { kind: "directory", name: "Fixture Vault" };
+      const fileSystem = {
+        async getDirectoryPath(root, segments) {
+          return segments.length ? attachments : root;
+        },
+        async listDirectories(handle) {
+          return handle === vault
+            ? [{ name: "Attachments", handle: attachments }]
+            : [];
+        },
+      };
+      document.getElementById("media-browser").addEventListener("click", async () => {
+        const result = await ui.chooseVaultFolder({
+          rootHandle: vault,
+          fileSystem,
+          title: "Choose parent for Media",
+          allowRoot: false,
+        });
+        if (result) ui.notify("media-parent: " + result.segments.join("/"));
+      });
     </script>
   </body>
 </html>

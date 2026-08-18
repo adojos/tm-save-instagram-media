@@ -4,6 +4,7 @@ import { createTampermonkeyMenuAdapter } from "../tampermonkey/menu.js";
 import { createLogger } from "../utils/logging.js";
 import { createFileSystemService } from "../filesystem/file-system.js";
 import { createVaultManager } from "../filesystem/vault-manager.js";
+import { createMediaRootManager } from "../filesystem/media-root-manager.js";
 import { createIndexedDbStore, createMemoryStore } from "../settings/indexeddb-store.js";
 import { createSettingsManager } from "../settings/settings-manager.js";
 import { createTampermonkeyBinaryRequest } from "../network/tampermonkey-network.js";
@@ -26,17 +27,38 @@ export function bootstrap({
     ? createIndexedDbStore({ indexedDB: globalScope.indexedDB })
     : createMemoryStore();
   const settingsManager = createSettingsManager(store);
-  const vaultManager = createVaultManager({ fileSystem, settingsManager });
+  const ui = createAppUi({ documentObject: globalScope.document });
+  const vaultManager = createVaultManager({
+    fileSystem,
+    settingsManager,
+    onBeforeSelection: () => ui.chooseDecision({
+      title: "Select Obsidian vault root",
+      message: "In the next picker, select the vault root—the folder containing all top-level vault folders—not a note or Media subfolder.",
+      choices: [
+        { label: "Cancel", value: "cancel" },
+        { label: "Continue", value: "continue", primary: true },
+      ],
+    }),
+    onUnverifiedVault: ({ handle }) => ui.chooseDecision({
+      title: "Confirm vault root",
+      message: handle.name + " does not contain a standard .obsidian folder. Choose another folder unless this is definitely the vault root and Obsidian uses a custom configuration folder.",
+      choices: [
+        { label: "Cancel", value: "cancel" },
+        { label: "Choose Another Folder", value: "choose", primary: true },
+        { label: "Use Anyway", value: "use" },
+      ],
+    }),
+  });
+  const mediaRootManager = createMediaRootManager({ fileSystem, settingsManager });
   const requestBinary = typeof gmRequest === "function"
     ? createTampermonkeyBinaryRequest(gmRequest)
     : async () => { throw new Error("Tampermonkey media download API is unavailable."); };
   const downloader = createMediaDownloader({ requestBinary });
   const obsidianStorage = createObsidianStorageProvider({ fileSystem, downloader });
   const downloadStorage = createDownloadStorageProvider({ fileSystem, downloader });
-  const ui = createAppUi({ documentObject: globalScope.document });
   const workflow = createCaptureWorkflow({
     globalScope, ui, fileSystem, settingsManager, vaultManager,
-    obsidianStorage, downloadStorage,
+    mediaRootManager, obsidianStorage, downloadStorage,
   });
   const pageLifecycle = createPageLifecycle({
     globalScope,

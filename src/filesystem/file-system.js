@@ -71,6 +71,41 @@ export function createFileSystemService({ globalScope = globalThis } = {}) {
       return current;
     },
 
+    async resolveDirectory(parent, name, { create = false } = {}) {
+      assertEntryName(name);
+      const matches = (await this.listDirectories(parent)).filter(
+        (entry) => entry.name.toLocaleLowerCase("en-US") ===
+          name.toLocaleLowerCase("en-US"),
+      );
+      if (matches.length > 1) {
+        const error = new Error("Multiple directories match " + name + " case-insensitively.");
+        error.code = "AMBIGUOUS_DIRECTORY_CASE";
+        throw error;
+      }
+      if (matches.length === 1) return matches[0];
+      if (!create) return null;
+      const handle = await this.getDirectory(parent, name, { create: true });
+      return Object.freeze({ name, handle });
+    },
+
+    async resolveDirectoryPath(parent, segments, { create = false } = {}) {
+      if (!Array.isArray(segments)) {
+        throw new TypeError("Directory path segments must be an array.");
+      }
+      let current = parent;
+      const actualSegments = [];
+      for (const segment of segments) {
+        const resolved = await this.resolveDirectory(current, segment, { create });
+        if (!resolved) return null;
+        current = resolved.handle;
+        actualSegments.push(resolved.name);
+      }
+      return Object.freeze({
+        handle: current,
+        segments: Object.freeze(actualSegments),
+      });
+    },
+
     async directoryExists(parent, name) {
       assertEntryName(name);
       return exists(() => parent.getDirectoryHandle(name));

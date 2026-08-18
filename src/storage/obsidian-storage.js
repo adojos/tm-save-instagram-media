@@ -1,4 +1,3 @@
-import { APP_CONFIG } from "../config.js";
 import { generateObsidianMarkdown } from "../markdown/generator.js";
 import { downloadCaptureMedia } from "../network/download-capture-media.js";
 import { buildItemDirectoryName } from "../utils/filename.js";
@@ -59,12 +58,14 @@ async function validateExistingRecoveryNote({
 }
 
 export function createObsidianStorageProvider({ fileSystem, downloader, now = () => new Date().toISOString() }) {
-  async function preflight({ vault, postId }) {
+  async function preflight({ vault, postId, mediaRoot }) {
     if (!await fileSystem.ensurePermission(vault)) {
       throw new StorageError("Write permission for the Obsidian vault was denied.", "PERMISSION_DENIED");
     }
-    const mediaRoot = await fileSystem.getDirectoryPath(vault, APP_CONFIG.mediaRootSegments, { create: true });
-    const existing = await findManagedCaptureDirectory({ fileSystem, mediaRoot, postId });
+    if (!mediaRoot?.handle || !Array.isArray(mediaRoot.segments)) {
+      throw new StorageError("The Instagram Media location is not configured.", "MEDIA_ROOT_REQUIRED");
+    }
+    const existing = await findManagedCaptureDirectory({ fileSystem, mediaRoot: mediaRoot.handle, postId });
     if (!existing) {
       return Object.freeze({ kind: "new", mediaRoot });
     }
@@ -86,14 +87,15 @@ export function createObsidianStorageProvider({ fileSystem, downloader, now = ()
       captureItem,
       title,
       vault,
+      mediaRoot,
       noteDirectory,
       noteDirectorySegments = [],
       onNoteCollision,
       onRecovery,
       onProgress,
     }) {
-      const checked = await preflight({ vault, postId: captureItem.postId });
-      const { mediaRoot } = checked;
+      const checked = await preflight({ vault, postId: captureItem.postId, mediaRoot });
+      const resolvedMediaRoot = checked.mediaRoot;
       const existing = checked.kind === "incomplete" ? checked.existing : null;
       let mediaDirectory;
       let mediaDirectoryName;
@@ -132,7 +134,7 @@ export function createObsidianStorageProvider({ fileSystem, downloader, now = ()
         }
         noteTarget = await allocateNoteTarget({ fileSystem, directory: noteDirectory, title, onCollision: onNoteCollision });
         mediaDirectoryName = buildItemDirectoryName(title, captureItem.postId);
-        mediaDirectory = await fileSystem.getDirectory(mediaRoot, mediaDirectoryName, { create: true });
+        mediaDirectory = await fileSystem.getDirectory(resolvedMediaRoot.handle, mediaDirectoryName, { create: true });
         const notePath = joinPath([...noteDirectorySegments, noteTarget.filename]);
         const incompleteMarker = createIncompleteMarker({ postId: captureItem.postId, notePath, startedAt: now() });
         await writeIncompleteMarker({ fileSystem, directory: mediaDirectory, marker: incompleteMarker });
@@ -148,7 +150,7 @@ export function createObsidianStorageProvider({ fileSystem, downloader, now = ()
       }
 
       const mediaPaths = downloaded.files.map(({ filename }) =>
-        joinPath([...APP_CONFIG.mediaRootSegments, mediaDirectoryName, filename]));
+        joinPath([...resolvedMediaRoot.segments, mediaDirectoryName, filename]));
       const markdown = generateObsidianMarkdown({ captureItem: downloaded.captureItem, title, mediaPaths });
       await fileSystem.writeText(noteDirectory, noteTarget.filename, markdown, {
         overwrite: recovering ? false : noteTarget.overwrite,

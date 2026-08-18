@@ -115,6 +115,10 @@ Mode B shall not create:
 
 On the first Mode A operation, the user shall be asked to choose the root directory of the Obsidian vault.
 
+The application shall clearly distinguish this vault-root selection from the
+later Markdown-note destination selection. A subject folder or note folder
+inside the vault shall not silently become the configured vault root.
+
 Example:
 
     D:\Knowledge\MyVault
@@ -164,33 +168,48 @@ The cached note destination shall not replace or redefine the configured vault r
 
 # 7. Obsidian Media Storage
 
-## 7.1 Default media root
+## 7.1 Media directory discovery
 
-The default Instagram media location shall be:
+The Instagram media location shall be resolved independently from the
+Markdown-note destination.
 
-    media/Instagram/
+When no previously configured media location is available, the application
+shall inspect only the immediate children of the configured vault root for a
+directory named `Media`, using a case-insensitive name comparison.
 
-relative to the Obsidian vault root.
+If found, the Instagram media root shall be:
 
-If required directories do not exist, the application shall be capable of creating them.
+    <Vault Root>/<Actual Media Directory Name>/Instagram/
+
+The actual on-disk casing shall be preserved in generated Markdown links.
 
 ---
 
-## 7.2 Media root configuration
+## 7.2 Missing Media directory
 
-The design shall allow the media root to become configurable.
+If no first-level `Media` directory exists, the application shall ask the
+user to choose one of these actions:
 
-The fixed v1 value is:
+1. create `Media` directly beneath the vault root, or
+2. choose another vault-relative parent folder in which `Media` shall be
+   created or reused.
 
-    media/Instagram/
+The custom parent shall be chosen through the application-owned vault browser
+so it cannot escape the configured vault. If the chosen folder is itself
+named `Media`, it may be used directly.
 
-The v1 UI shall not ask the user to select or configure another media root. Missing `media` and `Instagram` directories shall be created automatically.
+The application shall create or reuse `Instagram` beneath the resolved
+`Media` directory.
 
-A future project or release may expose alternatives such as:
+## 7.3 Media location persistence
 
-    Attachments/Instagram/
+The resolved vault-relative Instagram media path shall be persisted in
+IndexedDB and reused on later captures when it remains valid. If it no longer
+exists, the discovery and selection process shall run again.
 
-The underlying code shall therefore not scatter hard-coded media path strings throughout the implementation.
+The implementation shall not recursively search the vault for folders with
+similar names. The persisted media location, vault root, and Markdown-note
+destination are three separate pieces of state.
 
 ---
 
@@ -325,9 +344,9 @@ Example:
 
     ## Media
 
-    ![[media/Instagram/Elite Mastery Roadmap - DTGNAC9E1jI/DTGNAC9E1jI-01.jpg]]
+    ![[Media/Instagram/Elite Mastery Roadmap - DTGNAC9E1jI/DTGNAC9E1jI-01.jpg]]
 
-    ![[media/Instagram/Elite Mastery Roadmap - DTGNAC9E1jI/DTGNAC9E1jI-02.jpg]]
+    ![[Media/Instagram/Elite Mastery Roadmap - DTGNAC9E1jI/DTGNAC9E1jI-02.jpg]]
 
 The exact presentational structure may be refined without changing the storage architecture.
 

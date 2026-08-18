@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Instagram Capture Utility
 // @namespace    https://github.com/adojos/tm-save-instagram-media
-// @version      1.0.0
+// @version      1.1.0
 // @description  Capture Instagram media and metadata to Obsidian or a local folder.
 // @author       Tushar Sharma
 // @homepageURL  https://github.com/adojos/tm-save-instagram-media
@@ -21,9 +21,10 @@
   // src/config.js
   var APP_CONFIG = Object.freeze({
     name: "Instagram Capture Utility",
-    version: "1.0.0",
-    mediaRootSegments: Object.freeze(["media", "Instagram"]),
-    settingsSchemaVersion: 1,
+    version: "1.1.0",
+    mediaDirectoryName: "Media",
+    instagramDirectoryName: "Instagram",
+    settingsSchemaVersion: 2,
     captureStateSchemaVersion: 1
   });
 
@@ -1552,6 +1553,38 @@
         }
         return current;
       },
+      async resolveDirectory(parent, name, { create = false } = {}) {
+        assertEntryName(name);
+        const matches = (await this.listDirectories(parent)).filter(
+          (entry) => entry.name.toLocaleLowerCase("en-US") === name.toLocaleLowerCase("en-US")
+        );
+        if (matches.length > 1) {
+          const error = new Error("Multiple directories match " + name + " case-insensitively.");
+          error.code = "AMBIGUOUS_DIRECTORY_CASE";
+          throw error;
+        }
+        if (matches.length === 1) return matches[0];
+        if (!create) return null;
+        const handle = await this.getDirectory(parent, name, { create: true });
+        return Object.freeze({ name, handle });
+      },
+      async resolveDirectoryPath(parent, segments, { create = false } = {}) {
+        if (!Array.isArray(segments)) {
+          throw new TypeError("Directory path segments must be an array.");
+        }
+        let current = parent;
+        const actualSegments = [];
+        for (const segment of segments) {
+          const resolved2 = await this.resolveDirectory(current, segment, { create });
+          if (!resolved2) return null;
+          current = resolved2.handle;
+          actualSegments.push(resolved2.name);
+        }
+        return Object.freeze({
+          handle: current,
+          segments: Object.freeze(actualSegments)
+        });
+      },
       async directoryExists(parent, name) {
         assertEntryName(name);
         return exists(() => parent.getDirectoryHandle(name));
@@ -1631,32 +1664,153 @@
   }
 
   // src/filesystem/vault-manager.js
-  function createVaultManager({ fileSystem, settingsManager }) {
+  function cancelled() {
+    const error = new Error("Vault selection was cancelled.");
+    error.code = "CANCELLED";
+    return error;
+  }
+  function createVaultManager({
+    fileSystem,
+    settingsManager,
+    onBeforeSelection,
+    onUnverifiedVault
+  }) {
     if (!fileSystem || !settingsManager) {
       throw new TypeError("Filesystem and settings services are required.");
     }
-    return Object.freeze({
-      async configureVault() {
+    async function classifyVault(handle, source) {
+      if (await fileSystem.directoryExists(handle, ".obsidian")) return "use";
+      return await onUnverifiedVault?.({ handle, source }) ?? "use";
+    }
+    async function confirmAndPersist(handle, source) {
+      const decision = await classifyVault(handle, source);
+      if (decision !== "use") return decision;
+      await settingsManager.setVaultHandle(handle);
+      await settingsManager.updateSettings({
+        vaultRootConfirmed: true,
+        ...source === "selected" ? {
+          instagramMediaPath: "",
+          lastNoteRelativePath: ""
+        } : {}
+      });
+      return "use";
+    }
+    async function configureVault() {
+      if (onBeforeSelection && await onBeforeSelection() !== "continue") {
+        throw cancelled();
+      }
+      while (true) {
         const handle = await fileSystem.chooseDirectory({ id: "obsidian-vault" });
         if (!await fileSystem.ensurePermission(handle)) {
           throw new Error("Write permission for the selected vault was not granted.");
         }
-        await settingsManager.setVaultHandle(handle);
-        return handle;
-      },
+        const decision = await confirmAndPersist(handle, "selected");
+        if (decision === "use") return handle;
+        if (decision !== "choose") throw cancelled();
+      }
+    }
+    return Object.freeze({
+      configureVault,
       async getVault({ allowSelection = true } = {}) {
-        let handle = await settingsManager.getVaultHandle();
+        const [handle, settings] = await Promise.all([
+          settingsManager.getVaultHandle(),
+          settingsManager.getSettings()
+        ]);
         if (handle && await fileSystem.ensurePermission(handle)) {
-          return handle;
+          if (settings.vaultRootConfirmed) return handle;
+          const decision = await confirmAndPersist(handle, "persisted");
+          if (decision === "use") return handle;
+          if (decision !== "choose") throw cancelled();
         }
         if (!allowSelection) {
           return null;
         }
-        handle = await this.configureVault();
-        return handle;
+        return configureVault();
       },
       reset() {
         return settingsManager.resetVault();
+      }
+    });
+  }
+
+  // src/filesystem/media-root-manager.js
+  function splitRelativePath(path) {
+    if (typeof path !== "string" || !path) return [];
+    const segments = path.replace(/\\/gu, "/").split("/").filter(Boolean);
+    return segments.some((segment) => segment === "." || segment === "..") ? [] : segments;
+  }
+  function cancelled2() {
+    const error = new Error("Media location selection was cancelled.");
+    error.code = "CANCELLED";
+    return error;
+  }
+  function isConfiguredInstagramPath(segments) {
+    return segments.length >= 2 && segments.at(-2).toLocaleLowerCase("en-US") === APP_CONFIG.mediaDirectoryName.toLocaleLowerCase("en-US") && segments.at(-1).toLocaleLowerCase("en-US") === APP_CONFIG.instagramDirectoryName.toLocaleLowerCase("en-US");
+  }
+  function createMediaRootManager({ fileSystem, settingsManager }) {
+    if (!fileSystem || !settingsManager) {
+      throw new TypeError("Filesystem and settings services are required.");
+    }
+    async function persist(location) {
+      await settingsManager.updateSettings({
+        instagramMediaPath: location.segments.join("/")
+      });
+      return location;
+    }
+    async function ensureInstagram(mediaDirectory, parentSegments) {
+      const instagram = await fileSystem.resolveDirectory(
+        mediaDirectory.handle,
+        APP_CONFIG.instagramDirectoryName,
+        { create: true }
+      );
+      return Object.freeze({
+        handle: instagram.handle,
+        segments: Object.freeze([...parentSegments, mediaDirectory.name, instagram.name])
+      });
+    }
+    return Object.freeze({
+      async resolve({ vault, chooseLocation }) {
+        const settings = await settingsManager.getSettings();
+        const persistedSegments = splitRelativePath(settings.instagramMediaPath);
+        if (isConfiguredInstagramPath(persistedSegments)) {
+          const persisted = await fileSystem.resolveDirectoryPath(
+            vault,
+            persistedSegments,
+            { create: false }
+          );
+          if (persisted) return persist(persisted);
+        }
+        if (persistedSegments.length) {
+          await settingsManager.updateSettings({ instagramMediaPath: "" });
+        }
+        const rootMedia = await fileSystem.resolveDirectory(
+          vault,
+          APP_CONFIG.mediaDirectoryName
+        );
+        if (rootMedia) {
+          return persist(await ensureInstagram(rootMedia, []));
+        }
+        const choice = await chooseLocation?.();
+        if (!choice) throw cancelled2();
+        if (choice.kind === "root") {
+          const media2 = await fileSystem.resolveDirectory(
+            vault,
+            APP_CONFIG.mediaDirectoryName,
+            { create: true }
+          );
+          return persist(await ensureInstagram(media2, []));
+        }
+        if (choice.kind !== "custom" || !choice.handle || !Array.isArray(choice.segments)) {
+          throw new TypeError("Custom Media location must be vault-relative.");
+        }
+        const selectedIsMedia = choice.segments.at(-1)?.toLocaleLowerCase("en-US") === APP_CONFIG.mediaDirectoryName.toLocaleLowerCase("en-US");
+        const media = selectedIsMedia ? Object.freeze({ name: choice.segments.at(-1), handle: choice.handle }) : await fileSystem.resolveDirectory(
+          choice.handle,
+          APP_CONFIG.mediaDirectoryName,
+          { create: true }
+        );
+        const parentSegments = selectedIsMedia ? choice.segments.slice(0, -1) : choice.segments;
+        return persist(await ensureInstagram(media, parentSegments));
       }
     });
   }
@@ -1746,19 +1900,29 @@
   var VAULT_HANDLE_KEY = "vault-handle";
   var DEFAULT_SETTINGS = Object.freeze({
     schemaVersion: APP_CONFIG.settingsSchemaVersion,
-    instagramMediaPath: APP_CONFIG.mediaRootSegments.join("/"),
+    instagramMediaPath: "",
     lastMode: "obsidian",
     lastNoteRelativePath: "",
+    vaultRootConfirmed: false,
     debug: false
   });
+  function safeRelativePath(value) {
+    if (typeof value !== "string") return "";
+    const normalized = value.replace(/\\/gu, "/").replace(/^\/+|\/+$/gu, "");
+    if (!normalized) return "";
+    const segments = normalized.split("/");
+    return segments.some((segment) => !segment || segment === "." || segment === "..") ? "" : segments.join("/");
+  }
   function normalizeSettings(value) {
-    if (!value || value.schemaVersion !== APP_CONFIG.settingsSchemaVersion) {
+    if (!value || ![1, APP_CONFIG.settingsSchemaVersion].includes(value.schemaVersion)) {
       return { ...DEFAULT_SETTINGS };
     }
     return {
       ...DEFAULT_SETTINGS,
       lastMode: ["obsidian", "download"].includes(value.lastMode) ? value.lastMode : DEFAULT_SETTINGS.lastMode,
       lastNoteRelativePath: typeof value.lastNoteRelativePath === "string" ? value.lastNoteRelativePath : "",
+      instagramMediaPath: value.schemaVersion === APP_CONFIG.settingsSchemaVersion ? safeRelativePath(value.instagramMediaPath) : "",
+      vaultRootConfirmed: value.schemaVersion === APP_CONFIG.settingsSchemaVersion && value.vaultRootConfirmed === true,
       debug: value.debug === true
     };
   }
@@ -1787,7 +1951,11 @@
       },
       async resetVault() {
         await store.delete(VAULT_HANDLE_KEY);
-        await this.updateSettings({ lastNoteRelativePath: "" });
+        await this.updateSettings({
+          lastNoteRelativePath: "",
+          instagramMediaPath: "",
+          vaultRootConfirmed: false
+        });
       }
     });
   }
@@ -2517,12 +2685,14 @@
     return Object.freeze({ exists: true, noteDirectory, target, mediaFilenames: inspected.mediaFilenames });
   }
   function createObsidianStorageProvider({ fileSystem, downloader, now = () => (/* @__PURE__ */ new Date()).toISOString() }) {
-    async function preflight({ vault, postId }) {
+    async function preflight({ vault, postId, mediaRoot }) {
       if (!await fileSystem.ensurePermission(vault)) {
         throw new StorageError("Write permission for the Obsidian vault was denied.", "PERMISSION_DENIED");
       }
-      const mediaRoot = await fileSystem.getDirectoryPath(vault, APP_CONFIG.mediaRootSegments, { create: true });
-      const existing = await findManagedCaptureDirectory({ fileSystem, mediaRoot, postId });
+      if (!mediaRoot?.handle || !Array.isArray(mediaRoot.segments)) {
+        throw new StorageError("The Instagram Media location is not configured.", "MEDIA_ROOT_REQUIRED");
+      }
+      const existing = await findManagedCaptureDirectory({ fileSystem, mediaRoot: mediaRoot.handle, postId });
       if (!existing) {
         return Object.freeze({ kind: "new", mediaRoot });
       }
@@ -2542,14 +2712,15 @@
         captureItem,
         title,
         vault,
+        mediaRoot,
         noteDirectory,
         noteDirectorySegments = [],
         onNoteCollision,
         onRecovery,
         onProgress
       }) {
-        const checked = await preflight({ vault, postId: captureItem.postId });
-        const { mediaRoot } = checked;
+        const checked = await preflight({ vault, postId: captureItem.postId, mediaRoot });
+        const resolvedMediaRoot = checked.mediaRoot;
         const existing = checked.kind === "incomplete" ? checked.existing : null;
         let mediaDirectory;
         let mediaDirectoryName;
@@ -2589,7 +2760,7 @@
           }
           noteTarget = await allocateNoteTarget({ fileSystem, directory: noteDirectory, title, onCollision: onNoteCollision });
           mediaDirectoryName = buildItemDirectoryName(title, captureItem.postId);
-          mediaDirectory = await fileSystem.getDirectory(mediaRoot, mediaDirectoryName, { create: true });
+          mediaDirectory = await fileSystem.getDirectory(resolvedMediaRoot.handle, mediaDirectoryName, { create: true });
           const notePath2 = joinPath([...noteDirectorySegments, noteTarget.filename]);
           const incompleteMarker = createIncompleteMarker({ postId: captureItem.postId, notePath: notePath2, startedAt: now() });
           await writeIncompleteMarker({ fileSystem, directory: mediaDirectory, marker: incompleteMarker });
@@ -2599,7 +2770,7 @@
         for (const file of downloaded.files) {
           await fileSystem.writeBlob(mediaDirectory, file.filename, file.download.blob, { overwrite: recovering });
         }
-        const mediaPaths = downloaded.files.map(({ filename }) => joinPath([...APP_CONFIG.mediaRootSegments, mediaDirectoryName, filename]));
+        const mediaPaths = downloaded.files.map(({ filename }) => joinPath([...resolvedMediaRoot.segments, mediaDirectoryName, filename]));
         const markdown = generateObsidianMarkdown({ captureItem: downloaded.captureItem, title, mediaPaths });
         await fileSystem.writeText(noteDirectory, noteTarget.filename, markdown, {
           overwrite: recovering ? false : noteTarget.overwrite
@@ -2674,6 +2845,7 @@
   .actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
   .action { border: 1px solid #52525b; border-radius: 8px; padding: 9px 14px;
     cursor: pointer; background: #27272a; color: #fafafa; }
+  .action:disabled { cursor: not-allowed; opacity: .45; }
   .primary { border-color: #7c3aed; background: #7c3aed; }
   .danger { border-color: #dc2626; background: #991b1b; }
   .path { margin: 14px 0; padding: 10px; border-radius: 8px; background: #27272a;
@@ -2827,7 +2999,13 @@
           }
         });
       },
-      async chooseVaultFolder({ rootHandle, fileSystem, initialSegments = [] }) {
+      async chooseVaultFolder({
+        rootHandle,
+        fileSystem,
+        initialSegments = [],
+        title = "Choose note destination",
+        allowRoot = true
+      }) {
         let current = rootHandle;
         let segments = [];
         try {
@@ -2836,7 +3014,7 @@
         } catch {
           current = rootHandle;
         }
-        const panel = openModal("Choose note destination");
+        const panel = openModal(title);
         const path = append(panel, "div", void 0, "path");
         const folders = append(panel, "div", void 0, "folders");
         const actions = append(panel, "div", void 0, "actions");
@@ -2851,6 +3029,7 @@
           async function render() {
             path.textContent = "/" + segments.join("/");
             back.disabled = segments.length === 0;
+            select.disabled = !allowRoot && segments.length === 0;
             folders.replaceChildren();
             append(folders, "p", "Loading folders…", "muted");
             try {
@@ -2894,6 +3073,7 @@
     fileSystem,
     settingsManager,
     vaultManager,
+    mediaRootManager,
     obsidianStorage,
     downloadStorage,
     buildSnapshot = buildReadOnlyCaptureSnapshot
@@ -2927,9 +3107,33 @@
             });
           } else {
             const vault = await vaultManager.getVault();
+            const mediaRoot = await mediaRootManager.resolve({
+              vault,
+              chooseLocation: async () => {
+                const choice = await ui.chooseDecision({
+                  title: "Choose Media location",
+                  message: "No first-level Media folder exists in this vault. Create it at the vault root or choose another vault folder.",
+                  choices: [
+                    { label: "Cancel", value: "cancel" },
+                    { label: "Choose Another Folder", value: "custom" },
+                    { label: "Create at Vault Root", value: "root", primary: true }
+                  ]
+                });
+                if (choice === "root") return Object.freeze({ kind: "root" });
+                if (choice !== "custom") return null;
+                const selected = await ui.chooseVaultFolder({
+                  rootHandle: vault,
+                  fileSystem,
+                  title: "Choose parent for Media",
+                  allowRoot: false
+                });
+                return selected ? Object.freeze({ kind: "custom", ...selected }) : null;
+              }
+            });
             const preflight = await obsidianStorage.preflight({
               vault,
-              postId: snapshot.captureItem.postId
+              postId: snapshot.captureItem.postId,
+              mediaRoot
             });
             let destination = null;
             if (preflight.kind === "new") {
@@ -2947,6 +3151,7 @@
               captureItem: snapshot.captureItem,
               title: options.title,
               vault,
+              mediaRoot,
               noteDirectory: destination?.handle,
               noteDirectorySegments: destination?.segments ?? [],
               onProgress: (event) => ui.showProgress(event),
@@ -3040,20 +3245,42 @@
     const fileSystem = createFileSystemService({ globalScope });
     const store = globalScope.indexedDB ? createIndexedDbStore({ indexedDB: globalScope.indexedDB }) : createMemoryStore();
     const settingsManager = createSettingsManager(store);
-    const vaultManager = createVaultManager({ fileSystem, settingsManager });
+    const ui = createAppUi({ documentObject: globalScope.document });
+    const vaultManager = createVaultManager({
+      fileSystem,
+      settingsManager,
+      onBeforeSelection: () => ui.chooseDecision({
+        title: "Select Obsidian vault root",
+        message: "In the next picker, select the vault root—the folder containing all top-level vault folders—not a note or Media subfolder.",
+        choices: [
+          { label: "Cancel", value: "cancel" },
+          { label: "Continue", value: "continue", primary: true }
+        ]
+      }),
+      onUnverifiedVault: ({ handle }) => ui.chooseDecision({
+        title: "Confirm vault root",
+        message: handle.name + " does not contain a standard .obsidian folder. Choose another folder unless this is definitely the vault root and Obsidian uses a custom configuration folder.",
+        choices: [
+          { label: "Cancel", value: "cancel" },
+          { label: "Choose Another Folder", value: "choose", primary: true },
+          { label: "Use Anyway", value: "use" }
+        ]
+      })
+    });
+    const mediaRootManager = createMediaRootManager({ fileSystem, settingsManager });
     const requestBinary = typeof gmRequest2 === "function" ? createTampermonkeyBinaryRequest(gmRequest2) : async () => {
       throw new Error("Tampermonkey media download API is unavailable.");
     };
     const downloader = createMediaDownloader({ requestBinary });
     const obsidianStorage = createObsidianStorageProvider({ fileSystem, downloader });
     const downloadStorage = createDownloadStorageProvider({ fileSystem, downloader });
-    const ui = createAppUi({ documentObject: globalScope.document });
     const workflow = createCaptureWorkflow({
       globalScope,
       ui,
       fileSystem,
       settingsManager,
       vaultManager,
+      mediaRootManager,
       obsidianStorage,
       downloadStorage
     });

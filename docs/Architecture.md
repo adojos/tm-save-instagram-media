@@ -221,7 +221,7 @@ Implementations:
 Responsibilities:
 
 1. obtain configured vault access
-2. resolve the fixed v1 Instagram media root
+2. resolve the persisted or discovered vault-relative Instagram media root
 3. detect completed captures by canonical Post ID
 4. obtain a note destination through the vault-relative folder browser only when a new capture requires one
 5. create or recover the post-specific media directory
@@ -249,7 +249,7 @@ It must not:
 
 - create Markdown,
 - assume an Obsidian vault,
-- create `media/Instagram`,
+- create the configured Obsidian Media hierarchy,
 - generate YAML.
 
 ---
@@ -285,6 +285,7 @@ Responsibilities:
 - validate permission
 - request renewed permission
 - provide the root handle to the vault-relative destination browser
+- distinguish a confirmed vault root from an ordinary note subfolder
 - reset configuration
 
 Persistence:
@@ -307,10 +308,11 @@ Persist application preferences.
 Proposed data:
 
     {
-      schemaVersion: 1,
-      instagramMediaPath: "media/Instagram",
+      schemaVersion: 2,
+      instagramMediaPath: "Media/Instagram",
       lastMode: "obsidian",
       lastNoteRelativePath: "...",
+      vaultRootConfirmed: true,
       debug: false
     }
 
@@ -318,16 +320,18 @@ The FileSystemDirectoryHandle may require separate IndexedDB storage depending o
 
 Settings shall be versioned to allow migration.
 
-In v1, `instagramMediaPath` is centrally represented but fixed to `media/Instagram`; the settings UI does not expose an alternative.
+`instagramMediaPath` is a vault-relative path. An empty value means that the
+media location must be resolved. A v1 setting is migrated to this unresolved
+state so an obsolete fixed path is not reused silently.
 
 ---
 
 # 11. Obsidian Media Hierarchy
 
-Default:
+Default when a first-level Media directory exists or the user creates it:
 
     <Vault Root>/
-      media/
+      Media/
         Instagram/
           <Title> - <PostID>/
             <PostID>-01.jpg
@@ -338,7 +342,7 @@ Default:
 Example:
 
     MyVault/
-      media/
+      Media/
         Instagram/
           Elite Mastery Roadmap - DTGNAC9E1jI/
             DTGNAC9E1jI-01.jpg
@@ -347,6 +351,19 @@ Example:
 The Markdown note may reside anywhere else inside the vault.
 
 The post directory is located by canonical Post ID, not by assuming that its editable title remains unchanged.
+
+Media-root resolution follows this order:
+
+1. reuse a valid persisted vault-relative `instagramMediaPath`,
+2. inspect the vault root's immediate children for `Media`
+   case-insensitively,
+3. if absent, ask whether to create root-level `Media` or choose another
+   vault-relative parent,
+4. create or reuse `Instagram` beneath the resolved `Media` directory,
+5. persist the actual vault-relative path, including on-disk casing.
+
+The resolver does not recursively search the vault. The application-owned
+vault browser is used only when the user explicitly chooses a custom parent.
 
 ---
 
@@ -384,7 +401,7 @@ Generated note and media path components shall replace operating-system-invalid 
 
 Example:
 
-    ![[media/Instagram/Elite Mastery Roadmap - DTGNAC9E1jI/DTGNAC9E1jI-01.jpg]]
+    ![[Media/Instagram/Elite Mastery Roadmap - DTGNAC9E1jI/DTGNAC9E1jI-01.jpg]]
 
 Do not use:
 
@@ -531,7 +548,7 @@ Mode A uses explicit vault-resident capture state.
 1. extract all metadata
 2. discover complete media list
 3. validate vault access
-4. resolve the fixed media root and locate the canonical Post ID
+4. resolve the persisted or discovered media root and locate the canonical Post ID
 5. block if a valid complete marker already exists
 6. resolve a new note destination only when required
 7. create or validate `.capture-incomplete.json`

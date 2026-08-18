@@ -809,7 +809,7 @@ confirmation prevent broad or accidental destructive behaviour.
 
 ## Status
 
-Accepted
+Superseded by ADR-034
 
 ## Decision
 
@@ -1005,3 +1005,60 @@ Characters such as #, ^, [, ], and | have structural meaning in Obsidian
 wikilinks. Replacing them in application-generated path components produces
 predictable local embeds and avoids fragile or implementation-specific link
 escaping.
+
+---
+
+# ADR-034 — Discover or Configure a Vault-Relative Media Directory
+
+## Status
+
+Accepted
+
+## Decision
+
+The Markdown-note destination and the Instagram media location shall remain
+independent.
+
+When no valid persisted Instagram media path exists, the application shall
+inspect only the immediate children of the configured Obsidian vault root for
+a directory named `Media`, using case-insensitive comparison.
+
+If one matching directory exists, the application shall reuse it, create or
+reuse its `Instagram` child, preserve the actual on-disk casing in Markdown
+links, and persist the resulting vault-relative Instagram path in IndexedDB.
+
+If no matching first-level directory exists, the application shall ask the
+user whether to:
+
+1. create `Media` directly beneath the vault root, or
+2. choose another parent directory through the vault-relative folder browser
+   and create or reuse `Media` there.
+
+If the custom selected directory is itself named `Media`, it may be used
+directly. In every case, managed Instagram item directories remain beneath an
+`Instagram` child of the resolved Media directory.
+
+A valid persisted path shall be reused on later captures. If it no longer
+resolves beneath the configured vault, the application shall clear it and run
+discovery again.
+
+The application shall not recursively search the vault automatically. If
+multiple immediate directories compare equal to `Media`, resolution is
+ambiguous and shall stop rather than guessing.
+
+The native directory picker continues to configure the vault root only. Note
+destinations and custom Media parents use the application-owned vault browser.
+
+## Supersedes
+
+This decision supersedes ADR-030's fixed `media/Instagram/` rule while
+retaining a deterministic `Instagram` managed hierarchy beneath the resolved
+Media directory.
+
+## Reason
+
+Obsidian vaults commonly already contain a first-level Media directory, and
+users may intentionally keep attachments elsewhere. Immediate discovery gives
+the conventional layout a zero-configuration path, while explicit
+vault-relative selection supports custom organisation without unconstrained
+filesystem traversal or coupling media storage to note placement.

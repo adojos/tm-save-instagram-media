@@ -25,6 +25,7 @@ function harness({ mode = "download", preflightKind = "new", storageError } = {}
   };
   const parent = { kind: "directory", name: "Downloads" };
   const vault = { kind: "directory", name: "Vault" };
+  const mediaRoot = { kind: "directory", name: "Instagram" };
   const workflow = createCaptureWorkflow({
     globalScope: {}, ui, settingsManager,
     fileSystem: {
@@ -33,6 +34,12 @@ function harness({ mode = "download", preflightKind = "new", storageError } = {}
     vaultManager: {
       async getVault() { return vault; },
       async configureVault() { calls.push(["vault-picker"]); return vault; },
+    },
+    mediaRootManager: {
+      async resolve() {
+        calls.push(["media-root"]);
+        return { handle: mediaRoot, segments: ["Media", "Instagram"] };
+      },
     },
     obsidianStorage: {
       async preflight() { calls.push(["preflight"]); if (storageError) throw storageError; return { kind: preflightKind }; },

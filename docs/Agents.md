@@ -175,19 +175,22 @@ Select note destinations through an application-owned vault-relative folder brow
 
 ### 6. Centralise Instagram media inside the vault
 
-The default managed media hierarchy is:
+The preferred managed media hierarchy is:
 
-`media/Instagram/`
+`Media/Instagram/`
 
-For v1 this path is fixed in the UI. Keep it centrally configured internally so a later project or release can expose it without redesign.
+Reuse a first-level vault directory named `Media` case-insensitively. If it is
+absent, let the user create it at the vault root or choose another
+vault-relative parent. Persist the resolved path in IndexedDB. Media location
+and Markdown-note destination remain separate.
 
 Each captured Instagram item gets its own subdirectory:
 
-`media/Instagram/<Title> - <PostID>/`
+`<Resolved Media>/Instagram/<Title> - <PostID>/`
 
 Example:
 
-`media/Instagram/Elite Mastery Roadmap - DTGNAC9E1jI/`
+`Media/Instagram/Elite Mastery Roadmap - DTGNAC9E1jI/`
 
 Do not dump all Instagram media into a single flat directory.
 

@@ -23,6 +23,7 @@ const STYLES = `
   .actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
   .action { border: 1px solid #52525b; border-radius: 8px; padding: 9px 14px;
     cursor: pointer; background: #27272a; color: #fafafa; }
+  .action:disabled { cursor: not-allowed; opacity: .45; }
   .primary { border-color: #7c3aed; background: #7c3aed; }
   .danger { border-color: #dc2626; background: #991b1b; }
   .path { margin: 14px 0; padding: 10px; border-radius: 8px; background: #27272a;
@@ -179,7 +180,13 @@ export function createAppUi({ documentObject = document } = {}) {
       });
     },
 
-    async chooseVaultFolder({ rootHandle, fileSystem, initialSegments = [] }) {
+    async chooseVaultFolder({
+      rootHandle,
+      fileSystem,
+      initialSegments = [],
+      title = "Choose note destination",
+      allowRoot = true,
+    }) {
       let current = rootHandle;
       let segments = [];
       try {
@@ -188,7 +195,7 @@ export function createAppUi({ documentObject = document } = {}) {
       } catch {
         current = rootHandle;
       }
-      const panel = openModal("Choose note destination");
+      const panel = openModal(title);
       const path = append(panel, "div", undefined, "path");
       const folders = append(panel, "div", undefined, "folders");
       const actions = append(panel, "div", undefined, "actions");
@@ -201,6 +208,7 @@ export function createAppUi({ documentObject = document } = {}) {
         async function render() {
           path.textContent = "/" + segments.join("/");
           back.disabled = segments.length === 0;
+          select.disabled = !allowRoot && segments.length === 0;
           folders.replaceChildren();
           append(folders, "p", "Loading folders…", "muted");
           try {

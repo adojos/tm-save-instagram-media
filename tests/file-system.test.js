@@ -127,3 +127,13 @@ test("filesystem permission request is explicit", async () => {
   assert.equal(await service.ensurePermission(handle), true);
   assert.deepEqual(calls, [["query", "readwrite"], ["request", "readwrite"]]);
 });
+
+test("filesystem resolves configured directory paths case-insensitively with actual casing", async () => {
+  const service = createFileSystemService();
+  const root = new FakeDirectoryHandle();
+  const media = await root.getDirectoryHandle("MEDIA", { create: true });
+  await media.getDirectoryHandle("instagram", { create: true });
+
+  const resolved = await service.resolveDirectoryPath(root, ["Media", "Instagram"]);
+  assert.deepEqual(resolved.segments, ["MEDIA", "instagram"]);
+});

@@ -5,17 +5,25 @@ const VAULT_HANDLE_KEY = "vault-handle";
 
 const DEFAULT_SETTINGS = Object.freeze({
   schemaVersion: APP_CONFIG.settingsSchemaVersion,
-  instagramMediaPath: APP_CONFIG.mediaRootSegments.join("/"),
+  instagramMediaPath: "",
   lastMode: "obsidian",
   lastNoteRelativePath: "",
+  vaultRootConfirmed: false,
   debug: false,
 });
 
+function safeRelativePath(value) {
+  if (typeof value !== "string") return "";
+  const normalized = value.replace(/\\/gu, "/").replace(/^\/+|\/+$/gu, "");
+  if (!normalized) return "";
+  const segments = normalized.split("/");
+  return segments.some((segment) => !segment || segment === "." || segment === "..")
+    ? ""
+    : segments.join("/");
+}
+
 function normalizeSettings(value) {
-  if (
-    !value ||
-    value.schemaVersion !== APP_CONFIG.settingsSchemaVersion
-  ) {
+  if (!value || ![1, APP_CONFIG.settingsSchemaVersion].includes(value.schemaVersion)) {
     return { ...DEFAULT_SETTINGS };
   }
 
@@ -27,6 +35,11 @@ function normalizeSettings(value) {
     lastNoteRelativePath: typeof value.lastNoteRelativePath === "string"
       ? value.lastNoteRelativePath
       : "",
+    instagramMediaPath: value.schemaVersion === APP_CONFIG.settingsSchemaVersion
+      ? safeRelativePath(value.instagramMediaPath)
+      : "",
+    vaultRootConfirmed: value.schemaVersion === APP_CONFIG.settingsSchemaVersion &&
+      value.vaultRootConfirmed === true,
     debug: value.debug === true,
   };
 }
@@ -61,7 +74,11 @@ export function createSettingsManager(store) {
 
     async resetVault() {
       await store.delete(VAULT_HANDLE_KEY);
-      await this.updateSettings({ lastNoteRelativePath: "" });
+      await this.updateSettings({
+        lastNoteRelativePath: "",
+        instagramMediaPath: "",
+        vaultRootConfirmed: false,
+      });
     },
   });
 }
