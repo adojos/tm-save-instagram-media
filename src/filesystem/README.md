@@ -1,5 +1,7 @@
 # Filesystem
 
-This component will wrap the File System Access API, permission checks,
-directory traversal, and vault-root management. Filesystem operations must
-remain handle-based and stay beneath user-authorized roots.
+This component wraps the File System Access API, permission checks, safe path
+traversal, non-overwriting writes, directory listing, and Mode B numbered
+directory allocation. `vault-manager.js` restores or configures the vault root
+through the settings boundary. Operations remain handle-based and stay beneath
+user-authorized roots.
