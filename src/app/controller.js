@@ -3,6 +3,7 @@ import {
   detectRuntimeCapabilities,
   flattenCapabilityReport,
 } from "../runtime/capabilities.js";
+import { detectInstagramItemRoute } from "../instagram/item-route.js";
 
 export class ApplicationController {
   #globalScope;
@@ -33,6 +34,11 @@ export class ApplicationController {
     this.#menu.register(
       APP_CONFIG.name + ": Runtime diagnostics",
       () => this.reportCapabilities(),
+    );
+
+    this.#menu.register(
+      APP_CONFIG.name + ": Inspect current item",
+      () => this.inspectCurrentItem(),
     );
 
     this.#logger.info(
@@ -74,5 +80,26 @@ export class ApplicationController {
     }
 
     return report;
+  }
+
+  inspectCurrentItem() {
+    const itemRoute = detectInstagramItemRoute(
+      this.#globalScope?.location?.href,
+    );
+
+    if (!itemRoute) {
+      this.#logger.warn(
+        "The current page is not a supported Instagram post or reel permalink.",
+      );
+      return null;
+    }
+
+    this.#logger.info("Current Instagram item", itemRoute);
+
+    if (typeof console.table === "function") {
+      console.table(itemRoute);
+    }
+
+    return itemRoute;
   }
 }
