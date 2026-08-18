@@ -1,5 +1,11 @@
 # Local Development
 
+This document is the project-specific testing-environment record required by
+the governance in `Agents.md`. Keep it current enough for another agent or
+developer to reconstruct the useful development and validation environment
+from a clean checkout, including material prerequisites, fixtures, manual
+gates, limitations, and troubleshooting guidance.
+
 ## Prerequisites
 
 - Node.js 20 or newer

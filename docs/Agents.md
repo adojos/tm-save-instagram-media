@@ -336,6 +336,96 @@ Prefer small, reviewable changes.
 
 ---
 
+## Defect and Fix Governance
+
+GitHub Issues should be the default system of record for confirmed bugs,
+defects, and corrective fixes.
+
+Unless explicitly overridden:
+
+1. Create or identify a GitHub issue before implementing the fix.
+2. Record sufficient information to understand:
+   - the observed and expected behaviour
+   - the affected scope
+   - available reproduction evidence
+   - the validation or acceptance criteria
+3. Implement the fix on an issue-linked branch where practical.
+4. Add regression coverage when the defect can be reproduced reliably.
+5. Reference the issue from associated commits and pull requests.
+6. Close the issue only after the fix has been validated and delivered.
+
+Use a pull request when a fix changes executable behaviour, published
+artefacts, multiple components, or carries meaningful technical or regression
+risk. The pull request should link the issue and summarise the fix, test
+evidence, risks, and known limitations.
+
+Trivial changes, urgent fixes, experimental work, or project-specific
+constraints may justify a lighter process. Agents may exercise professional
+judgement, but should preserve reasonable traceability and document material
+departures from the default workflow.
+
+---
+
+## Autonomous and Iterative Testing
+
+Agents should make best efforts to reproduce, diagnose, fix, and validate
+defects without transferring routine testing work to the user.
+
+The preferred development cycle is:
+
+1. reproduce or characterise the failure
+2. create a regression test or controlled reproduction where practical
+3. implement a focused correction
+4. run the most relevant tests
+5. inspect the results and iterate
+6. run the broader applicable test suite
+7. validate affected build or release artefacts
+
+User assistance should normally be requested only when testing depends on
+private authentication, unavailable hardware, inaccessible environments,
+subjective acceptance, externally consequential actions, or another practical
+constraint that prevents independent validation.
+
+Manual screenshot-and-feedback loops should not replace an available automated
+test, fixture, sandbox, mock, or controlled test environment.
+
+---
+
+## Testing Environment Governance
+
+At the beginning of a project, and before significant redevelopment, assess
+what testing environment is appropriate for the project's technology, risk,
+and expected lifespan.
+
+This may include:
+
+- unit and integration tests
+- regression fixtures
+- filesystem or database sandboxes
+- mocked external services
+- browser automation
+- local test services
+- end-to-end or release-artifact validation
+
+Provision useful testing infrastructure as part of project development and
+maintain it for the duration of active development where proportionate.
+
+Document the environment sufficiently for another agent or developer to
+reconstruct it from a clean checkout. Where relevant, document:
+
+- prerequisites and supported environments
+- setup and validation commands
+- fixtures, mocks, and sample data
+- setup, teardown, and cleanup behaviour
+- manual steps or access requirements
+- known limitations and troubleshooting guidance
+
+Prefer committed, reproducible test infrastructure over undocumented local
+state. The depth of testing and documentation may be adapted to the needs of
+each project using professional judgement.
+
+---
+
 ## Initial Target Environment
 
 Primary target:
