@@ -9,6 +9,12 @@ the Post ID, and removes query strings and fragments from the canonical URL.
 It deliberately does not infer single-image versus carousel content from the
 URL; that classification belongs to page-content extraction.
 
+`item-context.js` resolves the active item through a strict layered strategy:
+one unambiguous active-dialog permalink, the browser location, canonical/Open
+Graph metadata, then one unambiguous main-region permalink. Dialog-scoped
+metadata also precedes background-page metadata. Conflicting links stop
+resolution rather than risking capture of the wrong item.
+
 `metadata.js` reads author and caption through isolated, layered strategies:
 semantic article content first, JSON-LD second, and narrowly parsed Open Graph
 metadata last. It reports the successful source for diagnostics. `title.js`
@@ -35,5 +41,10 @@ the first slide, collects ordered primary media, detects stalled transitions
 and loops, enforces a maximum, and attempts to restore the user's original
 position. `carousel-dom-driver.js` isolates live control clicks, lazy-load
 waiting, clipped-visibility selection, and current media URL discovery.
+
+`media-normalizer.js` converts selected single-image and reel candidates into
+typed primary/auxiliary media. `capture-snapshot.js` combines context,
+metadata, classification and media into the storage-independent CaptureItem;
+missing reel covers and authors are explicit non-fatal warnings.
 
 Carousel extraction is the first implementation priority.

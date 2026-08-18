@@ -56,6 +56,28 @@ test("semantic page content takes priority over structured fallbacks", () => {
   assert.equal(metadata.sources.caption, "semantic-heading");
 });
 
+test("active dialog metadata takes priority over a background article", () => {
+  const documentObject = documentFixture({
+    selectors: {
+      '[role="dialog"] header a[href]': element({
+        attributes: { href: "/active.author/" },
+      }),
+      '[role="dialog"] h1': element({ text: "Active reel caption" }),
+      "article header a[href]": element({
+        attributes: { href: "/background.author/" },
+      }),
+      "article h1": element({ text: "Background caption" }),
+    },
+  });
+
+  const metadata = extractInstagramMetadata({ documentObject, itemRoute: ITEM_ROUTE });
+
+  assert.equal(metadata.author, "active.author");
+  assert.equal(metadata.caption, "Active reel caption");
+  assert.equal(metadata.sources.author, "dialog-profile-link");
+  assert.equal(metadata.sources.caption, "dialog-heading");
+});
+
 test("JSON-LD supplies metadata when semantic content is unavailable", () => {
   const documentObject = documentFixture({
     jsonLd: ["malformed", JSON.stringify({

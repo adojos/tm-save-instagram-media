@@ -3,7 +3,7 @@ import {
   detectRuntimeCapabilities,
   flattenCapabilityReport,
 } from "../runtime/capabilities.js";
-import { detectInstagramItemRoute } from "../instagram/item-route.js";
+import { resolveInstagramItemContext } from "../instagram/item-context.js";
 import { extractInstagramMetadata } from "../instagram/metadata.js";
 import {
   classifyMediaProbe,
@@ -12,6 +12,7 @@ import {
 } from "../instagram/media-probe.js";
 import { createInstagramCarouselDriver } from "../instagram/carousel-dom-driver.js";
 import { traverseCarousel } from "../instagram/carousel-traversal.js";
+import { buildReadOnlyCaptureSnapshot } from "../instagram/capture-snapshot.js";
 
 export class ApplicationController {
   #globalScope;
@@ -52,6 +53,11 @@ export class ApplicationController {
     this.#menu.register(
       APP_CONFIG.name + ": Traverse carousel (diagnostic)",
       () => void this.traverseCurrentCarousel(),
+    );
+
+    this.#menu.register(
+      APP_CONFIG.name + ": Build capture snapshot (diagnostic)",
+      () => void this.buildCurrentCaptureSnapshot(),
     );
 
     this.#logger.info(
@@ -96,13 +102,14 @@ export class ApplicationController {
   }
 
   inspectCurrentItem() {
-    const itemRoute = detectInstagramItemRoute(
-      this.#globalScope?.location?.href,
-    );
+    const itemRoute = resolveInstagramItemContext({
+      locationHref: this.#globalScope?.location?.href,
+      documentObject: this.#globalScope?.document,
+    });
 
     if (!itemRoute) {
       this.#logger.warn(
-        "The current page is not a supported Instagram post or reel permalink.",
+        "The active Instagram item could not be resolved unambiguously.",
       );
       return null;
     }
@@ -132,6 +139,7 @@ export class ApplicationController {
     if (typeof console.table === "function") {
       console.table({
         routeKind: itemRoute.routeKind,
+        contextSource: itemRoute.resolutionSource,
         postId: metadata.postId,
         canonicalUrl: metadata.canonicalUrl,
         author: metadata.author || "(unavailable)",
@@ -171,9 +179,10 @@ export class ApplicationController {
   }
 
   async traverseCurrentCarousel() {
-    const itemRoute = detectInstagramItemRoute(
-      this.#globalScope?.location?.href,
-    );
+    const itemRoute = resolveInstagramItemContext({
+      locationHref: this.#globalScope?.location?.href,
+      documentObject: this.#globalScope?.document,
+    });
 
     if (!itemRoute || itemRoute.routeKind !== "post") {
       this.#logger.warn(
@@ -209,6 +218,39 @@ export class ApplicationController {
     } catch (error) {
       this.#logger.error(
         "Carousel traversal stopped safely:",
+        error?.code ?? error?.message ?? error,
+      );
+      return null;
+    }
+  }
+
+  async buildCurrentCaptureSnapshot() {
+    try {
+      const snapshot = await buildReadOnlyCaptureSnapshot({
+        globalScope: this.#globalScope,
+      });
+      const item = snapshot.captureItem;
+
+      this.#logger.info("Read-only capture snapshot", snapshot);
+      if (typeof console.table === "function") {
+        console.table({
+          contentType: item.contentType,
+          postId: item.postId,
+          author: item.author,
+          proposedTitle: item.proposedTitle,
+          mediaCount: item.mediaCount,
+          physicalMediaFiles: item.media.length,
+          contextSource: snapshot.diagnostics.contextSource,
+          classificationConfidence:
+            snapshot.diagnostics.classificationConfidence,
+          warnings: snapshot.warnings.join(" | ") || "(none)",
+        });
+      }
+
+      return snapshot;
+    } catch (error) {
+      this.#logger.error(
+        "Capture snapshot stopped safely:",
         error?.code ?? error?.message ?? error,
       );
       return null;

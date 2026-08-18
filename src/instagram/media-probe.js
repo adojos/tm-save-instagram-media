@@ -210,12 +210,39 @@ export function classifyMediaProbe({ itemRoute, probe }) {
   );
 
   if (itemRoute.routeKind === "reel") {
+    const videoCandidates = substantialCandidates
+      .filter((candidate) => candidate.mediaType === "video")
+      .sort(
+        (left, right) =>
+          (right.renderedWidth * right.renderedHeight) -
+          (left.renderedWidth * left.renderedHeight),
+      );
+    const selectedVideo = videoCandidates[0];
+    const runnerUpVideo = videoCandidates[1];
+    const selectedArea = selectedVideo
+      ? selectedVideo.renderedWidth * selectedVideo.renderedHeight
+      : 0;
+    const runnerUpArea = runnerUpVideo
+      ? runnerUpVideo.renderedWidth * runnerUpVideo.renderedHeight
+      : 0;
+    const isUnambiguous = Boolean(selectedVideo) && (
+      !runnerUpVideo || selectedArea >= runnerUpArea * 1.25
+    );
+
     return Object.freeze({
-      contentType: substantialCandidates.some(
-        (candidate) => candidate.mediaType === "video",
-      ) ? "reel" : "unsupported",
-      confidence: "route-and-media",
+      contentType: isUnambiguous ? "reel" : "unsupported",
+      confidence: isUnambiguous
+        ? runnerUpVideo
+          ? "route-and-dominant-video"
+          : "route-and-video"
+        : videoCandidates.length
+          ? "ambiguous-videos"
+          : "missing-video",
       substantialCandidateCount: substantialCandidates.length,
+      selectedCandidateIndex: isUnambiguous ? selectedVideo.index : null,
+      selectedSourceFingerprint: isUnambiguous
+        ? selectedVideo.sourceFingerprint
+        : null,
     });
   }
 

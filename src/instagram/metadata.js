@@ -161,20 +161,28 @@ export function extractInstagramMetadata({ documentObject, itemRoute }) {
     throw new TypeError("A detected Instagram item route is required.");
   }
 
-  const semanticAuthor = usernameFromProfileHref(
+  const dialogAuthor = usernameFromProfileHref(attributeFrom(
+    documentObject,
+    '[role="dialog"] header a[href]',
+    "href",
+  ));
+  const articleAuthor = usernameFromProfileHref(
     attributeFrom(documentObject, "article header a[href]", "href"),
   );
-  const semanticCaption = textFrom(documentObject, "article h1");
+  const dialogCaption = textFrom(documentObject, '[role="dialog"] h1');
+  const articleCaption = textFrom(documentObject, "article h1");
   const jsonLd = readJsonLd(documentObject);
   const openGraph = readOpenGraphFallback(documentObject);
 
   const author = chooseValue([
-    { value: semanticAuthor, source: "semantic-profile-link" },
+    { value: dialogAuthor, source: "dialog-profile-link" },
+    { value: articleAuthor, source: "semantic-profile-link" },
     { value: jsonLd.author, source: "json-ld" },
     { value: openGraph.author, source: "open-graph" },
   ]);
   const caption = chooseValue([
-    { value: semanticCaption, source: "semantic-heading" },
+    { value: dialogCaption, source: "dialog-heading" },
+    { value: articleCaption, source: "semantic-heading" },
     { value: jsonLd.caption, source: "json-ld" },
     { value: openGraph.caption, source: "open-graph" },
   ]);
