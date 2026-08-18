@@ -89,7 +89,7 @@ function normalizedSourceIdentity(source) {
   }
 }
 
-function selectCurrentMedia(region, controls, globalScope) {
+function selectCurrentMedia(region, controls, globalScope, context) {
   const viewport = {
     width: globalScope.innerWidth,
     height: globalScope.innerHeight,
@@ -98,7 +98,7 @@ function selectCurrentMedia(region, controls, globalScope) {
     region.querySelectorAll(INSTAGRAM_SELECTORS.mediaElements),
     (element, index) => ({
       element,
-      summary: inspectInstagramMediaElement(element, index, viewport),
+      summary: inspectInstagramMediaElement(element, index, viewport, context),
       area: clippedVisibleArea(element, region, globalScope),
     }),
   ).filter(({ summary }) =>
@@ -149,6 +149,7 @@ function delay(globalScope, milliseconds) {
 export function createInstagramCarouselDriver({
   documentObject,
   globalScope = globalThis,
+  itemRoute,
   transitionTimeoutMs = TRANSITION_TIMEOUT_MS,
   pollIntervalMs = POLL_INTERVAL_MS,
 }) {
@@ -159,7 +160,10 @@ export function createInstagramCarouselDriver({
     }
 
     const controls = findControls(located.element);
-    const selected = selectCurrentMedia(located.element, controls, globalScope);
+    const selected = selectCurrentMedia(located.element, controls, globalScope, {
+      documentObject,
+      itemRoute,
+    });
     if (!selected) {
       throw new Error("No active carousel media could be identified.");
     }

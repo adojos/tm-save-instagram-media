@@ -80,20 +80,25 @@ export async function buildReadOnlyCaptureSnapshot({
   const probe = collectInstagramMediaProbe(documentObject, {
     width: globalScope?.innerWidth,
     height: globalScope?.innerHeight,
-  });
+  }, itemRoute);
   const classification = classifyMediaProbe({ itemRoute, probe });
 
   if (classification.contentType === "unsupported") {
+    const temporaryReel = itemRoute.routeKind === "reel" &&
+      probe.candidates.some((candidate) =>
+        candidate.mediaType === "video" && candidate.temporaryPlaybackDetected);
     throw new CaptureInspectionError(
-      "Instagram media could not be classified safely.",
-      "UNSUPPORTED_MEDIA",
+      temporaryReel
+        ? "Instagram exposed only a temporary reel playback URL. Reload the reel and try again."
+        : "Instagram media could not be classified safely.",
+      temporaryReel ? "REEL_DOWNLOAD_URL_UNAVAILABLE" : "UNSUPPORTED_MEDIA",
     );
   }
 
   let media;
   if (classification.contentType === "carousel") {
     const traversal = await traverseCarousel({
-      driver: carouselDriverFactory({ documentObject, globalScope }),
+      driver: carouselDriverFactory({ documentObject, globalScope, itemRoute }),
     });
     media = traversal.media;
   } else {

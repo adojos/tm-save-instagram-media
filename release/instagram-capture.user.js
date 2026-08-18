@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Instagram Capture Utility
 // @namespace    https://github.com/adojos/tm-save-instagram-media
-// @version      1.1.0
+// @version      1.1.1
 // @description  Capture Instagram media and metadata to Obsidian or a local folder.
 // @author       Tushar Sharma
 // @homepageURL  https://github.com/adojos/tm-save-instagram-media
@@ -21,7 +21,7 @@
   // src/config.js
   var APP_CONFIG = Object.freeze({
     name: "Instagram Capture Utility",
-    version: "1.1.0",
+    version: "1.1.1",
     mediaDirectoryName: "Media",
     instagramDirectoryName: "Instagram",
     settingsSchemaVersion: 2,
@@ -148,12 +148,12 @@
     if (directRoute) {
       return resolved(directRoute, "location");
     }
-    for (const [selector, attribute, source] of [
+    for (const [selector, attribute2, source] of [
       ['link[rel="canonical"]', "href", "canonical-link"],
       ['meta[property="og:url"]', "content", "open-graph-url"]
     ]) {
       const element = documentObject?.querySelector?.(selector);
-      const route = routeFromValue(attributeValue(element, attribute));
+      const route = routeFromValue(attributeValue(element, attribute2));
       if (route) {
         return resolved(route, source);
       }
@@ -220,9 +220,9 @@
   function textFrom(documentObject, selector) {
     return cleanText(documentObject?.querySelector?.(selector)?.textContent);
   }
-  function attributeFrom(documentObject, selector, attribute) {
+  function attributeFrom(documentObject, selector, attribute2) {
     return cleanText(
-      documentObject?.querySelector?.(selector)?.getAttribute?.(attribute)
+      documentObject?.querySelector?.(selector)?.getAttribute?.(attribute2)
     );
   }
   function usernameFromProfileHref(href) {
@@ -389,6 +389,160 @@
     previous: /\b(previous|back)\b/iu
   });
 
+  // src/instagram/video-source.js
+  var MAX_STRUCTURED_SCRIPT_LENGTH = 5e6;
+  var MAX_VISITED_NODES = 5e4;
+  function isHttpMediaUrl(value) {
+    if (typeof value !== "string" || !value.trim()) return false;
+    try {
+      return ["http:", "https:"].includes(new URL(value.trim()).protocol);
+    } catch {
+      return false;
+    }
+  }
+  function firstHttpUrl(values) {
+    return values.find(isHttpMediaUrl)?.trim() ?? "";
+  }
+  function attribute(element, name) {
+    const value = element?.getAttribute?.(name);
+    return typeof value === "string" ? value.trim() : "";
+  }
+  function directElementSource(element) {
+    const childSources = Array.from(
+      element?.querySelectorAll?.("source[src]") ?? [],
+      (source) => source?.src || attribute(source, "src")
+    );
+    return firstHttpUrl([
+      element?.currentSrc,
+      element?.src,
+      attribute(element, "src"),
+      attribute(element, "data-src"),
+      attribute(element, "data-video-url"),
+      ...childSources
+    ]);
+  }
+  function urlReferencesPost(value, postId) {
+    if (!postId || typeof value !== "string") return false;
+    try {
+      const url = new URL(value);
+      if (!/(?:^|\.)instagram\.com$/iu.test(url.hostname)) return false;
+      const segments = url.pathname.split("/").filter(Boolean);
+      return segments.some(
+        (segment, index) => ["p", "reel", "reels"].includes(segment.toLowerCase()) && segments[index + 1] === postId
+      );
+    } catch {
+      return false;
+    }
+  }
+  function openGraphBelongsToPost(documentObject, postId) {
+    if (!postId) return true;
+    const pageUrl = attribute(
+      documentObject?.querySelector?.('meta[property="og:url"]'),
+      "content"
+    );
+    return urlReferencesPost(pageUrl, postId);
+  }
+  function openGraphSource(documentObject, postId) {
+    if (!openGraphBelongsToPost(documentObject, postId)) return "";
+    return firstHttpUrl([
+      attribute(documentObject?.querySelector?.('meta[property="og:video:secure_url"]'), "content"),
+      attribute(documentObject?.querySelector?.('meta[property="og:video:url"]'), "content"),
+      attribute(documentObject?.querySelector?.('meta[property="og:video"]'), "content")
+    ]);
+  }
+  function parseStructuredScripts(documentObject) {
+    const scripts = documentObject?.querySelectorAll?.(
+      'script[type="application/json"], script[type="application/ld+json"]'
+    ) ?? [];
+    const parsed = [];
+    for (const script of scripts) {
+      const text = typeof script?.textContent === "string" ? script.textContent.trim() : "";
+      if (!text || text.length > MAX_STRUCTURED_SCRIPT_LENGTH) continue;
+      try {
+        parsed.push(JSON.parse(text));
+      } catch {
+      }
+    }
+    return parsed;
+  }
+  function objectReferencesPost(value, postId) {
+    if (!postId || !value || typeof value !== "object") return false;
+    if (value.code === postId || value.shortcode === postId || value.identifier === postId) {
+      return true;
+    }
+    return [value.url, value["@id"], value.embedUrl].some((candidate) => urlReferencesPost(candidate, postId));
+  }
+  function findVideoObjectUrl(value, postId, pageMatchesPost) {
+    let visited = 0;
+    const stack = [value];
+    while (stack.length && visited < MAX_VISITED_NODES) {
+      const current = stack.pop();
+      if (!current || typeof current !== "object") continue;
+      visited += 1;
+      if ((current["@type"] === "VideoObject" || current.__typename === "Video") && (pageMatchesPost || objectReferencesPost(current, postId)) && isHttpMediaUrl(current.contentUrl ?? current.video_url ?? current.url)) {
+        return current.contentUrl ?? current.video_url ?? current.url;
+      }
+      for (const child of Array.isArray(current) ? current : Object.values(current)) {
+        stack.push(child);
+      }
+    }
+    return "";
+  }
+  function matchingPostVideoUrl(value, postId) {
+    if (!postId) return "";
+    let visited = 0;
+    const stack = [value];
+    while (stack.length && visited < MAX_VISITED_NODES) {
+      const current = stack.pop();
+      if (!current || typeof current !== "object") continue;
+      visited += 1;
+      if (current.code === postId || current.shortcode === postId) {
+        const versions = Array.isArray(current.video_versions) ? current.video_versions.map((version) => version?.url) : [];
+        const found = firstHttpUrl([
+          current.video_url,
+          current.videoUrl,
+          current.contentUrl,
+          ...versions
+        ]);
+        if (found) return found;
+      }
+      for (const child of Array.isArray(current) ? current : Object.values(current)) {
+        stack.push(child);
+      }
+    }
+    return "";
+  }
+  function structuredSource(documentObject, postId) {
+    const values = parseStructuredScripts(documentObject);
+    for (const value of values) {
+      const matched = matchingPostVideoUrl(value, postId);
+      if (matched) return { url: matched, source: "post-structured-data" };
+    }
+    const pageMatchesPost = openGraphBelongsToPost(documentObject, postId);
+    for (const value of values) {
+      const videoObject = findVideoObjectUrl(value, postId, pageMatchesPost);
+      if (videoObject) return { url: videoObject, source: "video-structured-data" };
+    }
+    return { url: "", source: "unavailable" };
+  }
+  function resolveInstagramVideoSource({ element, documentObject, postId }) {
+    const temporaryPlaybackDetected = [
+      element?.currentSrc,
+      element?.src,
+      attribute(element, "src")
+    ].some((value) => typeof value === "string" && /^(?:blob|data):/iu.test(value));
+    const direct = directElementSource(element);
+    if (direct) {
+      return Object.freeze({ url: direct, source: "video-element", temporaryPlaybackDetected });
+    }
+    const openGraph = openGraphSource(documentObject, postId);
+    if (openGraph) {
+      return Object.freeze({ url: openGraph, source: "open-graph", temporaryPlaybackDetected });
+    }
+    const structured = structuredSource(documentObject, postId);
+    return Object.freeze({ ...structured, temporaryPlaybackDetected });
+  }
+
   // src/instagram/media-probe.js
   var MIN_PRIMARY_INTRINSIC_EDGE = 320;
   var MIN_PRIMARY_RENDERED_EDGE = 180;
@@ -418,11 +572,19 @@
       inViewport
     };
   }
-  function mediaSource(element, mediaType) {
+  function mediaSource(element, mediaType, context) {
     if (mediaType === "video") {
-      return element?.currentSrc || element?.src || element?.querySelector?.("source[src]")?.src || "";
+      return resolveInstagramVideoSource({
+        element,
+        documentObject: context?.documentObject,
+        postId: context?.itemRoute?.postId
+      });
     }
-    return element?.currentSrc || element?.src || "";
+    return Object.freeze({
+      url: element?.currentSrc || element?.src || "",
+      source: "image-element",
+      temporaryPlaybackDetected: false
+    });
   }
   function fingerprintMediaSource(source) {
     let hash = 2166136261;
@@ -443,14 +605,17 @@
     );
     return intrinsic >= MIN_PRIMARY_INTRINSIC_EDGE && renderedMinimum >= MIN_PRIMARY_RENDERED_EDGE;
   }
-  function inspectInstagramMediaElement(element, index, viewport) {
+  function inspectInstagramMediaElement(element, index, viewport, context) {
     const mediaType = element?.tagName?.toLowerCase() === "video" ? "video" : "image";
     const dimensions = elementDimensions(element, mediaType, viewport);
-    const source = mediaSource(element, mediaType);
+    const resolvedSource = mediaSource(element, mediaType, context);
+    const source = resolvedSource.url;
     return Object.freeze({
       index: index + 1,
       mediaType,
       source,
+      sourceResolution: resolvedSource.source,
+      temporaryPlaybackDetected: resolvedSource.temporaryPlaybackDetected,
       sourceFingerprint: source ? fingerprintMediaSource(source) : "",
       poster: mediaType === "video" ? trimmedAttribute(element, "poster") : "",
       alt: mediaType === "image" ? trimmedAttribute(element, "alt") : "",
@@ -511,7 +676,7 @@
     }
     return { element: null, kind: "none" };
   }
-  function collectInstagramMediaProbe(documentObject, viewport) {
+  function collectInstagramMediaProbe(documentObject, viewport, itemRoute) {
     const region = locateInstagramMediaRegion(documentObject);
     if (!region.element) {
       return Object.freeze({
@@ -523,7 +688,10 @@
     }
     const candidates = Array.from(
       region.element.querySelectorAll?.(INSTAGRAM_SELECTORS.mediaElements) ?? [],
-      (element, index) => inspectInstagramMediaElement(element, index, viewport)
+      (element, index) => inspectInstagramMediaElement(element, index, viewport, {
+        documentObject,
+        itemRoute
+      })
     );
     const carouselControlLabels = Array.from(
       labelledCarouselControls(region.element),
@@ -652,7 +820,7 @@
       return source;
     }
   }
-  function selectCurrentMedia(region, controls, globalScope) {
+  function selectCurrentMedia(region, controls, globalScope, context) {
     const viewport = {
       width: globalScope.innerWidth,
       height: globalScope.innerHeight
@@ -661,7 +829,7 @@
       region.querySelectorAll(INSTAGRAM_SELECTORS.mediaElements),
       (element, index) => ({
         element,
-        summary: inspectInstagramMediaElement(element, index, viewport),
+        summary: inspectInstagramMediaElement(element, index, viewport, context),
         area: clippedVisibleArea(element, region, globalScope)
       })
     ).filter(
@@ -700,6 +868,7 @@
   function createInstagramCarouselDriver({
     documentObject,
     globalScope = globalThis,
+    itemRoute,
     transitionTimeoutMs = TRANSITION_TIMEOUT_MS,
     pollIntervalMs = POLL_INTERVAL_MS
   }) {
@@ -709,7 +878,10 @@
         throw new Error("The active carousel region is unavailable.");
       }
       const controls = findControls(located.element);
-      const selected = selectCurrentMedia(located.element, controls, globalScope);
+      const selected = selectCurrentMedia(located.element, controls, globalScope, {
+        documentObject,
+        itemRoute
+      });
       if (!selected) {
         throw new Error("No active carousel media could be identified.");
       }
@@ -1157,18 +1329,19 @@
     const probe = collectInstagramMediaProbe(documentObject, {
       width: globalScope?.innerWidth,
       height: globalScope?.innerHeight
-    });
+    }, itemRoute);
     const classification = classifyMediaProbe({ itemRoute, probe });
     if (classification.contentType === "unsupported") {
+      const temporaryReel = itemRoute.routeKind === "reel" && probe.candidates.some((candidate) => candidate.mediaType === "video" && candidate.temporaryPlaybackDetected);
       throw new CaptureInspectionError(
-        "Instagram media could not be classified safely.",
-        "UNSUPPORTED_MEDIA"
+        temporaryReel ? "Instagram exposed only a temporary reel playback URL. Reload the reel and try again." : "Instagram media could not be classified safely.",
+        temporaryReel ? "REEL_DOWNLOAD_URL_UNAVAILABLE" : "UNSUPPORTED_MEDIA"
       );
     }
     let media;
     if (classification.contentType === "carousel") {
       const traversal = await traverseCarousel({
-        driver: carouselDriverFactory({ documentObject, globalScope })
+        driver: carouselDriverFactory({ documentObject, globalScope, itemRoute })
       });
       media = traversal.media;
     } else {
@@ -1302,7 +1475,8 @@
         {
           width: this.#globalScope?.innerWidth,
           height: this.#globalScope?.innerHeight
-        }
+        },
+        itemRoute
       );
       const classification = classifyMediaProbe({ itemRoute, probe: mediaProbe });
       this.#logger.info("Current Instagram metadata", metadata);
@@ -1340,6 +1514,7 @@
           substantial: candidate.substantial,
           hasSource: Boolean(candidate.source),
           sourceKey: candidate.sourceFingerprint,
+          sourceResolution: candidate.sourceResolution,
           hasPoster: Boolean(candidate.poster),
           alt: candidate.alt.slice(0, 80)
         })));
