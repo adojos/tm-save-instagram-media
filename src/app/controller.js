@@ -158,6 +158,7 @@ export class ApplicationController {
         width: this.#globalScope?.innerWidth,
         height: this.#globalScope?.innerHeight,
       },
+      itemRoute,
     );
     const classification = classifyMediaProbe({ itemRoute, probe: mediaProbe });
 
@@ -201,6 +202,7 @@ export class ApplicationController {
         substantial: candidate.substantial,
         hasSource: Boolean(candidate.source),
         sourceKey: candidate.sourceFingerprint,
+        sourceResolution: candidate.sourceResolution,
         hasPoster: Boolean(candidate.poster),
         alt: candidate.alt.slice(0, 80),
       })));

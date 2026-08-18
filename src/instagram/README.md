@@ -47,4 +47,11 @@ typed primary/auxiliary media. `capture-snapshot.js` combines context,
 metadata, classification and media into the storage-independent CaptureItem;
 missing reel covers and authors are explicit non-fatal warnings.
 
+`video-source.js` keeps temporary `blob:` and `data:` playback URLs out of the
+capture model. It resolves a downloadable HTTP(S) reel URL from the video
+element, active-item Open Graph metadata, or Post-ID-matched structured data.
+Page-level fallbacks must match the active canonical Post ID so stale SPA
+metadata cannot substitute media from another item. If Instagram exposes only
+a temporary playback URL, capture stops with a specific recovery message.
+
 Carousel extraction is the first implementation priority.

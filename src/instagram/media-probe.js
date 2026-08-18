@@ -2,6 +2,7 @@ import {
   CAROUSEL_CONTROL_LABELS,
   INSTAGRAM_SELECTORS,
 } from "./selectors.js";
+import { resolveInstagramVideoSource } from "./video-source.js";
 
 const MIN_PRIMARY_INTRINSIC_EDGE = 320;
 const MIN_PRIMARY_RENDERED_EDGE = 180;
@@ -44,13 +45,20 @@ function elementDimensions(element, mediaType, viewport) {
   };
 }
 
-function mediaSource(element, mediaType) {
+function mediaSource(element, mediaType, context) {
   if (mediaType === "video") {
-    return element?.currentSrc || element?.src ||
-      element?.querySelector?.("source[src]")?.src || "";
+    return resolveInstagramVideoSource({
+      element,
+      documentObject: context?.documentObject,
+      postId: context?.itemRoute?.postId,
+    });
   }
 
-  return element?.currentSrc || element?.src || "";
+  return Object.freeze({
+    url: element?.currentSrc || element?.src || "",
+    source: "image-element",
+    temporaryPlaybackDetected: false,
+  });
 }
 
 export function fingerprintMediaSource(source) {
@@ -78,17 +86,20 @@ function isSubstantialMedia(dimensions) {
     renderedMinimum >= MIN_PRIMARY_RENDERED_EDGE;
 }
 
-export function inspectInstagramMediaElement(element, index, viewport) {
+export function inspectInstagramMediaElement(element, index, viewport, context) {
   const mediaType = element?.tagName?.toLowerCase() === "video"
     ? "video"
     : "image";
   const dimensions = elementDimensions(element, mediaType, viewport);
-  const source = mediaSource(element, mediaType);
+  const resolvedSource = mediaSource(element, mediaType, context);
+  const source = resolvedSource.url;
 
   return Object.freeze({
     index: index + 1,
     mediaType,
     source,
+    sourceResolution: resolvedSource.source,
+    temporaryPlaybackDetected: resolvedSource.temporaryPlaybackDetected,
     sourceFingerprint: source ? fingerprintMediaSource(source) : "",
     poster: mediaType === "video"
       ? trimmedAttribute(element, "poster")
@@ -171,7 +182,7 @@ export function locateInstagramMediaRegion(documentObject) {
   return { element: null, kind: "none" };
 }
 
-export function collectInstagramMediaProbe(documentObject, viewport) {
+export function collectInstagramMediaProbe(documentObject, viewport, itemRoute) {
   const region = locateInstagramMediaRegion(documentObject);
 
   if (!region.element) {
@@ -185,7 +196,10 @@ export function collectInstagramMediaProbe(documentObject, viewport) {
 
   const candidates = Array.from(
     region.element.querySelectorAll?.(INSTAGRAM_SELECTORS.mediaElements) ?? [],
-    (element, index) => inspectInstagramMediaElement(element, index, viewport),
+    (element, index) => inspectInstagramMediaElement(element, index, viewport, {
+      documentObject,
+      itemRoute,
+    }),
   );
   const carouselControlLabels = Array.from(
     labelledCarouselControls(region.element),
