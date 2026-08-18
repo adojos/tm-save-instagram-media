@@ -25,4 +25,10 @@ make duplicate candidates visible in diagnostics. Carousel traversal and final
 URL selection remain separate work and must not assume the probe candidates are
 complete.
 
+`carousel-traversal.js` owns the bounded traversal state machine: it rewinds to
+the first slide, collects ordered primary media, detects stalled transitions
+and loops, enforces a maximum, and attempts to restore the user's original
+position. `carousel-dom-driver.js` isolates live control clicks, lazy-load
+waiting, clipped-visibility selection, and current media URL discovery.
+
 Carousel extraction is the first implementation priority.

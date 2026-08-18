@@ -1,8 +1,10 @@
-import { INSTAGRAM_SELECTORS } from "./selectors.js";
+import {
+  CAROUSEL_CONTROL_LABELS,
+  INSTAGRAM_SELECTORS,
+} from "./selectors.js";
 
 const MIN_PRIMARY_INTRINSIC_EDGE = 320;
 const MIN_PRIMARY_RENDERED_EDGE = 180;
-const CAROUSEL_CONTROL_PATTERN = /\b(next|previous|back)\b/iu;
 const MAX_CONTROL_ANCESTORS = 10;
 
 function finiteDimension(value) {
@@ -51,7 +53,7 @@ function mediaSource(element, mediaType) {
   return element?.currentSrc || element?.src || "";
 }
 
-function fingerprintSource(source) {
+export function fingerprintMediaSource(source) {
   let hash = 0x811c9dc5;
 
   for (let index = 0; index < source.length; index += 1) {
@@ -76,7 +78,7 @@ function isSubstantialMedia(dimensions) {
     renderedMinimum >= MIN_PRIMARY_RENDERED_EDGE;
 }
 
-function summarizeMediaElement(element, index, viewport) {
+export function inspectInstagramMediaElement(element, index, viewport) {
   const mediaType = element?.tagName?.toLowerCase() === "video"
     ? "video"
     : "image";
@@ -87,7 +89,7 @@ function summarizeMediaElement(element, index, viewport) {
     index: index + 1,
     mediaType,
     source,
-    sourceFingerprint: source ? fingerprintSource(source) : "",
+    sourceFingerprint: source ? fingerprintMediaSource(source) : "",
     poster: mediaType === "video"
       ? trimmedAttribute(element, "poster")
       : "",
@@ -105,9 +107,11 @@ function summarizeMediaElement(element, index, viewport) {
 function labelledCarouselControls(region) {
   return Array.from(
     region?.querySelectorAll?.(INSTAGRAM_SELECTORS.labelledButtons) ?? [],
-  ).filter((button) => CAROUSEL_CONTROL_PATTERN.test(
-    trimmedAttribute(button, "aria-label"),
-  ));
+  ).filter((button) => {
+    const label = trimmedAttribute(button, "aria-label");
+    return CAROUSEL_CONTROL_LABELS.next.test(label) ||
+      CAROUSEL_CONTROL_LABELS.previous.test(label);
+  });
 }
 
 function findCarouselControlRegion(documentObject) {
@@ -133,7 +137,7 @@ function findCarouselControlRegion(documentObject) {
   return null;
 }
 
-function findProbeRegion(documentObject) {
+export function locateInstagramMediaRegion(documentObject) {
   const carouselRegion = findCarouselControlRegion(documentObject);
   if (carouselRegion) {
     return { element: carouselRegion, kind: "carousel-control-ancestor" };
@@ -168,7 +172,7 @@ function findProbeRegion(documentObject) {
 }
 
 export function collectInstagramMediaProbe(documentObject, viewport) {
-  const region = findProbeRegion(documentObject);
+  const region = locateInstagramMediaRegion(documentObject);
 
   if (!region.element) {
     return Object.freeze({
@@ -181,7 +185,7 @@ export function collectInstagramMediaProbe(documentObject, viewport) {
 
   const candidates = Array.from(
     region.element.querySelectorAll?.(INSTAGRAM_SELECTORS.mediaElements) ?? [],
-    (element, index) => summarizeMediaElement(element, index, viewport),
+    (element, index) => inspectInstagramMediaElement(element, index, viewport),
   );
   const carouselControlLabels = Array.from(
     labelledCarouselControls(region.element),

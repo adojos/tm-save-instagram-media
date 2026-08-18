@@ -8,7 +8,10 @@ import { extractInstagramMetadata } from "../instagram/metadata.js";
 import {
   classifyMediaProbe,
   collectInstagramMediaProbe,
+  fingerprintMediaSource,
 } from "../instagram/media-probe.js";
+import { createInstagramCarouselDriver } from "../instagram/carousel-dom-driver.js";
+import { traverseCarousel } from "../instagram/carousel-traversal.js";
 
 export class ApplicationController {
   #globalScope;
@@ -44,6 +47,11 @@ export class ApplicationController {
     this.#menu.register(
       APP_CONFIG.name + ": Inspect current item",
       () => this.inspectCurrentItem(),
+    );
+
+    this.#menu.register(
+      APP_CONFIG.name + ": Traverse carousel (diagnostic)",
+      () => void this.traverseCurrentCarousel(),
     );
 
     this.#logger.info(
@@ -156,5 +164,50 @@ export class ApplicationController {
     }
 
     return Object.freeze({ itemRoute, metadata, mediaProbe, classification });
+  }
+
+  async traverseCurrentCarousel() {
+    const itemRoute = detectInstagramItemRoute(
+      this.#globalScope?.location?.href,
+    );
+
+    if (!itemRoute || itemRoute.routeKind !== "post") {
+      this.#logger.warn(
+        "Carousel traversal requires an Instagram post permalink.",
+      );
+      return null;
+    }
+
+    try {
+      const driver = createInstagramCarouselDriver({
+        documentObject: this.#globalScope?.document,
+        globalScope: this.#globalScope,
+      });
+      const result = await traverseCarousel({ driver });
+
+      this.#logger.info("Ordered carousel traversal result", result);
+      if (typeof console.table === "function") {
+        console.table(result.media.map((item) => ({
+          sequence: item.sequence,
+          type: item.type,
+          dimensions: item.width && item.height
+            ? item.width + "x" + item.height
+            : "unknown",
+          sourceKey: fingerprintMediaSource(item.url),
+        })));
+      }
+      this.#logger.info(
+        "Original carousel position restored:",
+        result.originalPositionRestored,
+      );
+
+      return result;
+    } catch (error) {
+      this.#logger.error(
+        "Carousel traversal stopped safely:",
+        error?.code ?? error?.message ?? error,
+      );
+      return null;
+    }
   }
 }
