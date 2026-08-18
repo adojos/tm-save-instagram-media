@@ -9,4 +9,9 @@ the Post ID, and removes query strings and fragments from the canonical URL.
 It deliberately does not infer single-image versus carousel content from the
 URL; that classification belongs to page-content extraction.
 
+`metadata.js` reads author and caption through isolated, layered strategies:
+semantic article content first, JSON-LD second, and narrowly parsed Open Graph
+metadata last. It reports the successful source for diagnostics. `title.js`
+derives a separate editable title without rewriting the captured caption.
+
 Carousel extraction is the first implementation priority.

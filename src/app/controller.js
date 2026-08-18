@@ -4,6 +4,7 @@ import {
   flattenCapabilityReport,
 } from "../runtime/capabilities.js";
 import { detectInstagramItemRoute } from "../instagram/item-route.js";
+import { extractInstagramMetadata } from "../instagram/metadata.js";
 
 export class ApplicationController {
   #globalScope;
@@ -96,10 +97,26 @@ export class ApplicationController {
 
     this.#logger.info("Current Instagram item", itemRoute);
 
+    const metadata = extractInstagramMetadata({
+      documentObject: this.#globalScope?.document,
+      itemRoute,
+    });
+
+    this.#logger.info("Current Instagram metadata", metadata);
+
     if (typeof console.table === "function") {
-      console.table(itemRoute);
+      console.table({
+        routeKind: itemRoute.routeKind,
+        postId: metadata.postId,
+        canonicalUrl: metadata.canonicalUrl,
+        author: metadata.author || "(unavailable)",
+        caption: metadata.caption || "(unavailable)",
+        proposedTitle: metadata.proposedTitle,
+        authorSource: metadata.sources.author,
+        captionSource: metadata.sources.caption,
+      });
     }
 
-    return itemRoute;
+    return Object.freeze({ itemRoute, metadata });
   }
 }
