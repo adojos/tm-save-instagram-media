@@ -81,6 +81,24 @@ test("optional cover failure warns and removes it from finalized capture", async
   ]);
 });
 
+test("non-JPEG reel cover is omitted without failing the reel", async () => {
+  const result = await downloadCaptureMedia({
+    captureItem: reelCapture(),
+    downloader: {
+      async download(media) {
+        return media.role === "auxiliary"
+          ? { extension: "webp", blob: new Blob(["cover"]) }
+          : { extension: "mp4", blob: new Blob(["video"]) };
+      },
+    },
+  });
+
+  assert.deepEqual(result.files.map(({ filename }) => filename), ["ABC123.mp4"]);
+  assert.deepEqual(result.warnings, [
+    "Optional reel cover was not supplied as a validated JPEG and was omitted.",
+  ]);
+});
+
 test("required primary failure aborts immediately", async () => {
   let attempts = 0;
   await assert.rejects(

@@ -56,13 +56,18 @@ test("plans reel primary and auxiliary cover filenames", () => {
   ]);
   const plan = planMediaFilenames({
     captureItem: item,
-    downloads: [{ extension: "mp4" }, { extension: "webp" }],
+    downloads: [{ extension: "mp4" }, { extension: "jpg" }],
   });
 
   assert.deepEqual(plan.map(({ filename }) => filename), [
     "ABC123.mp4",
-    "ABC123-cover.webp",
+    "ABC123-cover.jpg",
   ]);
+
+  assert.throws(() => planMediaFilenames({
+    captureItem: item,
+    downloads: [{ extension: "mp4" }, { extension: "webp" }],
+  }), /validated JPEG/u);
 });
 
 test("single-image posts use the deterministic sequence basename", () => {

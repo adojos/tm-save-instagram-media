@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Instagram Capture UI Smoke Fixture</title>
+    <style>
+      body { margin: 0; min-height: 100vh; background: #09090b; color: #fafafa; font: 16px/1.5 system-ui, sans-serif; }
+      main { max-width: 720px; margin: 80px auto; padding: 24px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Instagram Capture UI Smoke Fixture</h1>
+      <p>This local fixture exercises the isolated Shadow DOM interface.</p>
+    </main>
+    <script type="module">
+      import { createAppUi } from "../../src/ui/app-ui.js";
+
+      const ui = createAppUi();
+      const captureItem = Object.freeze({
+        author: "fixture-author",
+        contentType: "carousel",
+        mediaCount: 3,
+        proposedTitle: "Fixture capture title",
+      });
+      ui.setCaptureAvailable(true, async () => {
+        const result = await ui.showCaptureOptions({
+          captureItem,
+          warnings: ["Fixture warning"],
+          defaultMode: "obsidian",
+        });
+        if (result) ui.notify(result.mode + ": " + result.title);
+      }, "Save Carousel");
+    </script>
+  </body>
+</html>

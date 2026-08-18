@@ -29,6 +29,9 @@ export function planMediaFilenames({ captureItem, downloads }) {
     if (captureItem.contentType === "reel" && media.role === "primary") {
       basename = captureItem.postId;
     } else if (media.role === "auxiliary" && media.purpose === "cover") {
+      if (extension !== "jpg") {
+        throw new TypeError("Reel cover downloads must be validated JPEG files.");
+      }
       basename = captureItem.postId + "-cover";
     } else if (media.role === "primary") {
       basename = captureItem.postId + "-" +

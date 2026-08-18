@@ -1,8 +1,8 @@
 # Source layout
 
-The source tree is organized by architectural responsibility. Only modules
-that are implemented and safe to execute are imported by the userscript
-entry point.
+The source tree is organized by architectural responsibility. Production
+modules are imported through the userscript entry point and bundled into one
+installable file.
 
 - app: application lifecycle and orchestration
 - instagram: page detection and extraction
@@ -17,5 +17,6 @@ entry point.
 - tampermonkey: userscript-specific adapters
 - utils: portable helpers
 
-Unimplemented components remain disconnected from bootstrap. This prevents
-partially built capture behavior from writing files or modifying the page.
+Portable services are kept behind narrow adapters so Instagram extraction,
+Tampermonkey networking, browser filesystem access, and storage transactions
+can be tested independently.

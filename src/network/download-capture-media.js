@@ -47,6 +47,16 @@ export async function downloadCaptureMedia({
 
     try {
       const download = await downloader.download(media);
+      if (
+        media.role === "auxiliary" &&
+        media.purpose === "cover" &&
+        download.extension !== "jpg"
+      ) {
+        warnings.push(
+          "Optional reel cover was not supplied as a validated JPEG and was omitted.",
+        );
+        continue;
+      }
       successfulMedia.push(media);
       downloads.push(download);
     } catch (error) {

@@ -31,15 +31,18 @@ export function createIndexedDbStore({
       const transaction = database.transaction(storeName, mode);
       const store = transaction.objectStore(storeName);
       let request;
+      let result;
       try {
         request = operation(store);
       } catch (error) {
         reject(error);
         return;
       }
-      request.onsuccess = () => resolve(request.result);
+      request.onsuccess = () => { result = request.result; };
       request.onerror = () => reject(request.error);
       transaction.onabort = () => reject(transaction.error);
+      transaction.onerror = () => reject(transaction.error);
+      transaction.oncomplete = () => resolve(result);
     });
   }
 

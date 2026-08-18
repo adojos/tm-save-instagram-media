@@ -15,7 +15,7 @@ function validateEmbedPath(path) {
     path.trim() === "" ||
     /[\r\n]/u.test(path) ||
     path.includes("[[") ||
-    path.includes("]]" )
+    path.includes("]]")
   ) {
     throw new TypeError("Media embed path is unsafe.");
   }

@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile } from "node:fs/promises";
 import { build, context } from "esbuild";
 
 const watch = process.argv.includes("--watch");
@@ -27,4 +27,7 @@ if (watch) {
   console.info("Watching Tampermonkey userscript sources...");
 } else {
   await build(options);
+  await mkdir("release", { recursive: true });
+  await copyFile(options.outfile, "release/instagram-capture.user.js");
+  console.info("Release userscript written to release/instagram-capture.user.js");
 }

@@ -1,6 +1,6 @@
 # User interface
 
-This component will contain scoped, idempotent Instagram-page UI:
+This component contains scoped, idempotent Shadow DOM UI:
 
 - capture button
 - capture modal
@@ -9,4 +9,5 @@ This component will contain scoped, idempotent Instagram-page UI:
 - duplicate and recovery dialogs
 - settings and notifications
 
-No capture UI is connected until its backing workflow is functional.
+The UI receives normalized data and callbacks. Instagram extraction, network,
+and storage behavior remain outside this component.

@@ -43,11 +43,19 @@ export function inspectManagedNote(text, postId, mediaDirectoryName) {
     return Object.freeze({ valid: false, reason: "identity-mismatch" });
   }
   const filenames = [];
+  const ownedFilename = new RegExp(
+    "^" + postId + "(?:-\\d+|-cover)?\\.(?:jpg|png|webp|avif|mp4)$",
+    "u",
+  );
   for (const match of text.matchAll(/!\[\[([^\]\r\n]+)\]\]/gu)) {
     const path = match[1].replace(/\\/gu, "/");
     const segments = path.split("/");
     const filename = segments.at(-1);
-    if (segments.at(-2) === mediaDirectoryName && filename && !/[\\/]/u.test(filename)) {
+    if (
+      segments.at(-2) === mediaDirectoryName &&
+      filename &&
+      ownedFilename.test(filename)
+    ) {
       filenames.push(filename);
     }
   }

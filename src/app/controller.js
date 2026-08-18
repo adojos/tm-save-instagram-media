@@ -19,6 +19,11 @@ export class ApplicationController {
   #logger;
   #menu;
   #gmRequest;
+  #workflow;
+  #ui;
+  #pageLifecycle;
+  #vaultManager;
+  #settingsManager;
   #initialised = false;
 
   constructor({
@@ -26,11 +31,21 @@ export class ApplicationController {
     logger,
     menu,
     gmRequest,
+    workflow,
+    ui,
+    pageLifecycle,
+    vaultManager,
+    settingsManager,
   }) {
     this.#globalScope = globalScope;
     this.#logger = logger;
     this.#menu = menu;
     this.#gmRequest = gmRequest;
+    this.#workflow = workflow;
+    this.#ui = ui;
+    this.#pageLifecycle = pageLifecycle;
+    this.#vaultManager = vaultManager;
+    this.#settingsManager = settingsManager;
   }
 
   initialise() {
@@ -60,6 +75,21 @@ export class ApplicationController {
       () => void this.buildCurrentCaptureSnapshot(),
     );
 
+    this.#menu.register(
+      APP_CONFIG.name + ": Save current item",
+      () => void this.#workflow?.run(),
+    );
+
+    this.#menu.register(
+      APP_CONFIG.name + ": Change Obsidian vault",
+      () => void this.changeVault(),
+    );
+
+    this.#menu.register(
+      APP_CONFIG.name + ": Reset cached configuration",
+      () => void this.resetConfiguration(),
+    );
+
     this.#logger.info(
       APP_CONFIG.name + " " + APP_CONFIG.version + " initialised.",
     );
@@ -78,6 +108,7 @@ export class ApplicationController {
     }
 
     this.#initialised = true;
+    this.#pageLifecycle?.start();
   }
 
   getCapabilities() {
@@ -255,5 +286,31 @@ export class ApplicationController {
       );
       return null;
     }
+  }
+
+  async changeVault() {
+    try {
+      const handle = await this.#vaultManager?.configureVault();
+      if (handle) this.#ui?.notify("Obsidian vault set to " + handle.name + ".");
+    } catch (error) {
+      if (error?.name !== "AbortError") {
+        this.#ui?.notify(error?.message ?? "Unable to configure the vault.", { error: true });
+      }
+    }
+  }
+
+  async resetConfiguration() {
+    const choice = await this.#ui?.chooseDecision({
+      title: "Reset cached configuration",
+      message: "Forget the cached vault and remembered preferences? No files will be deleted.",
+      choices: [
+        { label: "Cancel", value: "cancel" },
+        { label: "Reset", value: "reset", danger: true },
+      ],
+    });
+    if (choice !== "reset") return;
+    await this.#settingsManager?.resetVault();
+    await this.#settingsManager?.updateSettings({ lastMode: "obsidian", debug: false });
+    this.#ui?.notify("Cached configuration reset. Existing files were not changed.");
   }
 }

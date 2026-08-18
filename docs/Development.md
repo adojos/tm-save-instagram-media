@@ -4,52 +4,45 @@
 
 - Node.js 20 or newer
 - npm
-- Tampermonkey
+- Tampermonkey for an optional live-browser acceptance test
 
-## Install
+## Install and validate
 
     npm install
-
-## Validate
-
-Run the portable unit tests:
-
-    npm test
-
-Build the installable userscript:
-
-    npm run build
-
-Run both:
-
     npm run check
 
-The generated userscript is written to:
+The check command runs the portable Node test suite and bundles the ES module source into one userscript. It writes generated output to both:
 
     dist/instagram-capture.user.js
+    release/instagram-capture.user.js
 
-The dist directory is intentionally excluded from Git. Release artifacts
-will be generated from a verified source revision.
+`dist/` is ignored working output. `release/` is the tracked, directly installable userscript published through GitHub.
 
-## Watch mode
+For continuous local builds:
 
     npm run build:watch
 
-## Current runtime behavior
+Watch mode updates only `dist/instagram-capture.user.js`; run `npm run build` before committing a release artifact.
 
-The scaffold registers a Tampermonkey menu command named:
+## Runtime behavior
 
-    Instagram Capture Utility: Runtime diagnostics
+The userscript adds a floating capture button on supported Instagram post and reel contexts and follows Instagram SPA navigation. The Tampermonkey menu also provides:
 
-Running it prints a capability report for:
+- Save current item
+- Change Obsidian vault
+- Reset cached configuration
+- Runtime and extraction diagnostics
 
-- Tampermonkey cross-origin network requests
-- the Tampermonkey menu API
-- directory selection
-- IndexedDB
-- secure context
-- top-level execution
+The capture dialog obtains an editable title and selects either Obsidian or download-only mode. Obsidian destinations use the application-owned vault browser; ordinary downloads use the native parent-directory picker.
 
-No capture action is exposed yet. This is deliberate: extraction and
-filesystem workflows will be enabled only after their implementation and
-tests are complete.
+## Manual acceptance test
+
+After `npm run check`, install `release/instagram-capture.user.js` in Tampermonkey and validate one example of each available Instagram content shape:
+
+1. Single-image post
+2. Carousel, including mixed media when available
+3. Reel
+4. Download-only capture
+5. Obsidian capture, duplicate detection, and one deliberately interrupted recovery fixture when release risk warrants it
+
+This live pass is intentionally consolidated because Instagram behavior cannot be reproduced completely by portable unit fixtures. Routine development should use the automated suite rather than repeated console-screenshot loops.

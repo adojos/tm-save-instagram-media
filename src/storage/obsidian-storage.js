@@ -59,7 +59,29 @@ async function validateExistingRecoveryNote({
 }
 
 export function createObsidianStorageProvider({ fileSystem, downloader, now = () => new Date().toISOString() }) {
+  async function preflight({ vault, postId }) {
+    if (!await fileSystem.ensurePermission(vault)) {
+      throw new StorageError("Write permission for the Obsidian vault was denied.", "PERMISSION_DENIED");
+    }
+    const mediaRoot = await fileSystem.getDirectoryPath(vault, APP_CONFIG.mediaRootSegments, { create: true });
+    const existing = await findManagedCaptureDirectory({ fileSystem, mediaRoot, postId });
+    if (!existing) {
+      return Object.freeze({ kind: "new", mediaRoot });
+    }
+    const state = await inspectCaptureState({ fileSystem, directory: existing.handle, postId });
+    if (state.kind === "complete") {
+      await removeIncompleteMarkerBestEffort({ fileSystem, directory: existing.handle });
+      throw new StorageError("This Instagram item already exists in the vault.", "DUPLICATE_CAPTURE");
+    }
+    if (state.kind !== "incomplete") {
+      throw new StorageError("Existing capture directory has ambiguous or untracked state.", "CAPTURE_STATE_CONFLICT");
+    }
+    return Object.freeze({ kind: "incomplete", mediaRoot, existing, state });
+  }
+
   return Object.freeze({
+    preflight,
+
     async save({
       captureItem,
       title,
@@ -70,11 +92,9 @@ export function createObsidianStorageProvider({ fileSystem, downloader, now = ()
       onRecovery,
       onProgress,
     }) {
-      if (!await fileSystem.ensurePermission(vault)) {
-        throw new StorageError("Write permission for the Obsidian vault was denied.", "PERMISSION_DENIED");
-      }
-      const mediaRoot = await fileSystem.getDirectoryPath(vault, APP_CONFIG.mediaRootSegments, { create: true });
-      const existing = await findManagedCaptureDirectory({ fileSystem, mediaRoot, postId: captureItem.postId });
+      const checked = await preflight({ vault, postId: captureItem.postId });
+      const { mediaRoot } = checked;
+      const existing = checked.kind === "incomplete" ? checked.existing : null;
       let mediaDirectory;
       let mediaDirectoryName;
       let noteTarget;
@@ -83,14 +103,7 @@ export function createObsidianStorageProvider({ fileSystem, downloader, now = ()
       if (existing) {
         mediaDirectory = existing.handle;
         mediaDirectoryName = existing.name;
-        const state = await inspectCaptureState({ fileSystem, directory: mediaDirectory, postId: captureItem.postId });
-        if (state.kind === "complete") {
-          await removeIncompleteMarkerBestEffort({ fileSystem, directory: mediaDirectory });
-          throw new StorageError("This Instagram item already exists in the vault.", "DUPLICATE_CAPTURE");
-        }
-        if (state.kind !== "incomplete") {
-          throw new StorageError("Existing capture directory has ambiguous or untracked state.", "CAPTURE_STATE_CONFLICT");
-        }
+        const state = checked.state;
 
         const existingNote = await validateExistingRecoveryNote({
           fileSystem, vault, mediaDirectory, mediaDirectoryName, marker: state.marker,
