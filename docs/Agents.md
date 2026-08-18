@@ -37,6 +37,39 @@ before implementing the deviation.
 
 ---
 
+## Reference Repositories
+
+External reference repositories are stored outside this repository under:
+
+`D:\WORKSPACE-DEV\02-REPOSITORIES\Reference-Repos`
+
+Before making significant architectural or implementation changes, consult
+`docs/Reference-Repositories.md` for the currently approved reference repositories.
+
+Reference repositories are provided for:
+
+- architectural inspiration
+- implementation-pattern comparison
+- API/DOM-handling ideas
+- testing approaches
+- UI/UX inspiration
+
+They are not project dependencies.
+
+Do not modify reference repositories.
+
+Do not copy source code verbatim unless explicitly requested and licensing has been checked.
+
+The authoritative requirements and architecture of this project remain:
+
+- `Requirements.md`
+- `Architecture.md`
+- `Decisions.md`
+
+Reference repositories must not override those documents.
+
+---
+
 ## Core Engineering Principles
 
 ### 1. Keep the design modular
