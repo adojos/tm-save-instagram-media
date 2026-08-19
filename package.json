@@ -1,6 +1,6 @@
 {
-  "name": "tampermonkey-instagram-media-capture",
-  "version": "1.2.0",
+  "name": "tampermonkey-insta-media-capture",
+  "version": "1.2.1",
   "private": true,
   "description": "Tampermonkey utility for capturing Instagram media and metadata.",
   "type": "module",

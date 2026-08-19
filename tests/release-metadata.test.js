@@ -14,6 +14,6 @@ test("userscript release metadata matches the application version and canonical 
   assert.match(metadata, new RegExp("^// @version\\s+" + APP_CONFIG.version.replaceAll(".", "\\.") + "$", "mu"));
   assert.match(metadata, /^\/\/ @name\s+Instagram Media Capture for Tampermonkey$/mu);
   assert.match(metadata, /^\/\/ @namespace\s+https:\/\/github\.com\/adojos\/tm-save-instagram-media$/mu);
-  assert.match(metadata, /^\/\/ @downloadURL\s+https:\/\/raw\.githubusercontent\.com\/adojos\/tampermonkey-instagram-media-capture\/main\/release\/instagram-media-capture\.user\.js$/mu);
-  assert.match(metadata, /^\/\/ @updateURL\s+https:\/\/raw\.githubusercontent\.com\/adojos\/tampermonkey-instagram-media-capture\/main\/release\/instagram-media-capture\.user\.js$/mu);
+  assert.match(metadata, /^\/\/ @downloadURL\s+https:\/\/raw\.githubusercontent\.com\/adojos\/tampermonkey-insta-media-capture\/main\/release\/insta-media-capture\.user\.js$/mu);
+  assert.match(metadata, /^\/\/ @updateURL\s+https:\/\/raw\.githubusercontent\.com\/adojos\/tampermonkey-insta-media-capture\/main\/release\/insta-media-capture\.user\.js$/mu);
 });

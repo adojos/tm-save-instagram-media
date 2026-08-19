@@ -712,6 +712,6 @@ Even if eventually bundled into one userscript:
         logging.js
 
     build/
-      instagram-media-capture.user.js
+      insta-media-capture.user.js
 
 This structure is conceptual and may be adapted to the chosen build tooling.
