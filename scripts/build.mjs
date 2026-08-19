@@ -2,8 +2,8 @@ import { copyFile, mkdir, readFile } from "node:fs/promises";
 import { build, context } from "esbuild";
 
 const watch = process.argv.includes("--watch");
-const canonicalOutput = "dist/instagram-media-capture.user.js";
-const canonicalRelease = "release/instagram-media-capture.user.js";
+const canonicalOutput = "dist/insta-media-capture.user.js";
+const canonicalRelease = "release/insta-media-capture.user.js";
 const metadata = await readFile(
   new URL("../src/userscript.meta.txt", import.meta.url),
   "utf8",

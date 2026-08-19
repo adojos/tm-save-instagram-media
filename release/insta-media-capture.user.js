@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         Instagram Media Capture for Tampermonkey
 // @namespace    https://github.com/adojos/tm-save-instagram-media
-// @version      1.2.0
+// @version      1.2.1
 // @description  Capture Instagram media and metadata to Obsidian or a local folder.
 // @author       Tushar Sharma
-// @homepageURL  https://github.com/adojos/tampermonkey-instagram-media-capture
-// @supportURL   https://github.com/adojos/tampermonkey-instagram-media-capture/issues
-// @downloadURL  https://raw.githubusercontent.com/adojos/tampermonkey-instagram-media-capture/main/release/instagram-media-capture.user.js
-// @updateURL    https://raw.githubusercontent.com/adojos/tampermonkey-instagram-media-capture/main/release/instagram-media-capture.user.js
+// @homepageURL  https://github.com/adojos/tampermonkey-insta-media-capture
+// @supportURL   https://github.com/adojos/tampermonkey-insta-media-capture/issues
+// @downloadURL  https://raw.githubusercontent.com/adojos/tampermonkey-insta-media-capture/main/release/insta-media-capture.user.js
+// @updateURL    https://raw.githubusercontent.com/adojos/tampermonkey-insta-media-capture/main/release/insta-media-capture.user.js
 // @match        https://www.instagram.com/*
 // @grant        GM_registerMenuCommand
 // @grant        GM_xmlhttpRequest
@@ -21,7 +21,7 @@
   // src/config.js
   var APP_CONFIG = Object.freeze({
     name: "Instagram Media Capture for Tampermonkey",
-    version: "1.2.0",
+    version: "1.2.1",
     mediaDirectoryName: "Media",
     instagramDirectoryName: "Instagram",
     settingsSchemaVersion: 2,

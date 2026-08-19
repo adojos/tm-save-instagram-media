@@ -19,8 +19,8 @@ gates, limitations, and troubleshooting guidance.
 
 The check command runs the portable Node test suite and bundles the ES module source into one userscript. It writes generated output to both:
 
-    dist/instagram-media-capture.user.js
-    release/instagram-media-capture.user.js
+    dist/insta-media-capture.user.js
+    release/insta-media-capture.user.js
 
 `dist/` is ignored working output. `release/` is the tracked, directly installable userscript published through GitHub.
 
@@ -28,12 +28,13 @@ For continuous local builds:
 
     npm run build:watch
 
-Watch mode updates only `dist/instagram-media-capture.user.js`; run `npm run build` before committing a release artifact.
+Watch mode updates only `dist/insta-media-capture.user.js`; run `npm run build` before committing a release artifact.
 
 The legacy userscript `@namespace` is intentionally retained to avoid changing
-the script's historical identity. The v1.2 repository rename requires a
-one-time reinstall because GitHub's former raw-content URL does not reliably
-follow the renamed repository. Future releases use the canonical file above.
+the script's historical identity. The v1.2 and v1.2.1 repository and artefact
+renames require a one-time reinstall because GitHub's former raw-content URL
+does not reliably follow a renamed repository or file. Future releases use the
+canonical file above.
 
 ## Runtime behavior
 
@@ -48,7 +49,7 @@ The capture dialog obtains an editable title and selects either Obsidian or down
 
 ## Manual acceptance test
 
-After `npm run check`, install `release/instagram-media-capture.user.js` in Tampermonkey and validate one example of each available Instagram content shape:
+After `npm run check`, install `release/insta-media-capture.user.js` in Tampermonkey and validate one example of each available Instagram content shape:
 
 1. Single-image post
 2. Carousel, including mixed media when available
