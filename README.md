@@ -7,7 +7,8 @@
 [![Tampermonkey userscript](https://img.shields.io/badge/Tampermonkey-userscript-00485B?logo=tampermonkey&logoColor=white)](https://raw.githubusercontent.com/adojos/tampermonkey-insta-media-capture/main/release/insta-media-capture.user.js)
 
 A Tampermonkey userscript for saving Instagram images, mixed-media carousels, reels, captions, and source metadata.
-
+<br>
+<br>
 ## Install
 
 1. Install Tampermonkey in Microsoft Edge, Chrome, or another Chromium-based browser.
