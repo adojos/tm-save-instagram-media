@@ -1,4 +1,4 @@
-# Instagram Capture Utility — Architecture Decisions
+# Instagram Media Capture for Tampermonkey — Architecture Decisions
 
 This document records approved architectural decisions and the reasoning behind them.
 

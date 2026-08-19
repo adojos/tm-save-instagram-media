@@ -2,6 +2,9 @@ import { copyFile, mkdir, readFile } from "node:fs/promises";
 import { build, context } from "esbuild";
 
 const watch = process.argv.includes("--watch");
+const canonicalOutput = "dist/instagram-media-capture.user.js";
+const canonicalRelease = "release/instagram-media-capture.user.js";
+const legacyRelease = "release/instagram-capture.user.js";
 const metadata = await readFile(
   new URL("../src/userscript.meta.txt", import.meta.url),
   "utf8",
@@ -13,7 +16,7 @@ const options = {
   format: "iife",
   platform: "browser",
   target: ["es2022"],
-  outfile: "dist/instagram-capture.user.js",
+  outfile: canonicalOutput,
   banner: { js: metadata.trimEnd() },
   charset: "utf8",
   legalComments: "none",
@@ -28,6 +31,8 @@ if (watch) {
 } else {
   await build(options);
   await mkdir("release", { recursive: true });
-  await copyFile(options.outfile, "release/instagram-capture.user.js");
-  console.info("Release userscript written to release/instagram-capture.user.js");
+  await copyFile(options.outfile, canonicalRelease);
+  await copyFile(options.outfile, legacyRelease);
+  console.info(`Release userscript written to ${canonicalRelease}`);
+  console.info(`Legacy update endpoint written to ${legacyRelease}`);
 }

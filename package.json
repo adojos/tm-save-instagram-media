@@ -1,6 +1,6 @@
 {
-  "name": "tm-save-instagram-media",
-  "version": "1.1.1",
+  "name": "tampermonkey-instagram-media-capture",
+  "version": "1.2.0",
   "private": true,
   "description": "Tampermonkey utility for capturing Instagram media and metadata.",
   "type": "module",

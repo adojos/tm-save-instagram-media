@@ -4,7 +4,7 @@ import test from "node:test";
 
 import { APP_CONFIG } from "../src/config.js";
 
-test("userscript release metadata matches the application version and update target", async () => {
+test("userscript release metadata matches the application version and canonical update target", async () => {
   const [metadata, packageJson] = await Promise.all([
     readFile(new URL("../src/userscript.meta.txt", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8").then(JSON.parse),
@@ -12,6 +12,17 @@ test("userscript release metadata matches the application version and update tar
 
   assert.equal(APP_CONFIG.version, packageJson.version);
   assert.match(metadata, new RegExp("^// @version\\s+" + APP_CONFIG.version.replaceAll(".", "\\.") + "$", "mu"));
-  assert.match(metadata, /^\/\/ @downloadURL\s+https:\/\/raw\.githubusercontent\.com\/adojos\/tm-save-instagram-media\/main\/release\/instagram-capture\.user\.js$/mu);
-  assert.match(metadata, /^\/\/ @updateURL\s+https:\/\/raw\.githubusercontent\.com\/adojos\/tm-save-instagram-media\/main\/release\/instagram-capture\.user\.js$/mu);
+  assert.match(metadata, /^\/\/ @name\s+Instagram Media Capture for Tampermonkey$/mu);
+  assert.match(metadata, /^\/\/ @namespace\s+https:\/\/github\.com\/adojos\/tm-save-instagram-media$/mu);
+  assert.match(metadata, /^\/\/ @downloadURL\s+https:\/\/raw\.githubusercontent\.com\/adojos\/tampermonkey-instagram-media-capture\/main\/release\/instagram-media-capture\.user\.js$/mu);
+  assert.match(metadata, /^\/\/ @updateURL\s+https:\/\/raw\.githubusercontent\.com\/adojos\/tampermonkey-instagram-media-capture\/main\/release\/instagram-media-capture\.user\.js$/mu);
+});
+
+test("canonical and legacy release paths contain the same userscript", async () => {
+  const [canonical, legacy] = await Promise.all([
+    readFile(new URL("../release/instagram-media-capture.user.js", import.meta.url), "utf8"),
+    readFile(new URL("../release/instagram-capture.user.js", import.meta.url), "utf8"),
+  ]);
+
+  assert.equal(legacy, canonical);
 });

@@ -1,10 +1,10 @@
-# Instagram Capture Utility
+# Instagram Media Capture for Tampermonkey
 
-[![License: MIT](https://img.shields.io/github/license/adojos/tm-save-instagram-media)](LICENSE)
-[![Latest release](https://img.shields.io/github/v/release/adojos/tm-save-instagram-media)](https://github.com/adojos/tm-save-instagram-media/releases/latest)
-[![Repository size](https://img.shields.io/github/repo-size/adojos/tm-save-instagram-media)](https://github.com/adojos/tm-save-instagram-media)
-[![Primary language](https://img.shields.io/github/languages/top/adojos/tm-save-instagram-media)](src)
-[![Tampermonkey userscript](https://img.shields.io/badge/Tampermonkey-userscript-00485B?logo=tampermonkey&logoColor=white)](https://raw.githubusercontent.com/adojos/tm-save-instagram-media/main/release/instagram-capture.user.js)
+[![License: MIT](https://img.shields.io/github/license/adojos/tampermonkey-instagram-media-capture)](LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/adojos/tampermonkey-instagram-media-capture)](https://github.com/adojos/tampermonkey-instagram-media-capture/releases/latest)
+[![Repository size](https://img.shields.io/github/repo-size/adojos/tampermonkey-instagram-media-capture)](https://github.com/adojos/tampermonkey-instagram-media-capture)
+[![Primary language](https://img.shields.io/github/languages/top/adojos/tampermonkey-instagram-media-capture)](src)
+[![Tampermonkey userscript](https://img.shields.io/badge/Tampermonkey-userscript-00485B?logo=tampermonkey&logoColor=white)](https://raw.githubusercontent.com/adojos/tampermonkey-instagram-media-capture/main/release/instagram-media-capture.user.js)
 
 A Tampermonkey userscript for saving Instagram images, mixed-media carousels, reels, captions, and source metadata.
 
@@ -12,14 +12,14 @@ A Tampermonkey userscript for saving Instagram images, mixed-media carousels, re
 
 1. Install Tampermonkey in Microsoft Edge, Chrome, or another Chromium-based browser.
 2. Enable the browser extension setting **Allow User Scripts** when the browser requires it.
-3. Open the [installable userscript](https://raw.githubusercontent.com/adojos/tm-save-instagram-media/main/release/instagram-capture.user.js).
+3. Open the [installable userscript](https://raw.githubusercontent.com/adojos/tampermonkey-instagram-media-capture/main/release/instagram-media-capture.user.js).
 4. Review the Tampermonkey installation screen and select **Install**.
 
 Tampermonkey can check the same release URL for later updates.
 
 ## Use
 
-Open an individual Instagram post or reel while signed in. Select the floating **Save Instagram item** button, or use **Instagram Capture Utility: Save current item** from the Tampermonkey menu.
+Open an individual Instagram post or reel while signed in. Select the floating **Save Instagram item** button, or use **Instagram Media Capture for Tampermonkey: Save current item** from the Tampermonkey menu.
 
 The capture dialog supports two modes:
 
@@ -86,6 +86,15 @@ Media location under the new rules. Existing folders created under an
 incorrectly selected note subfolder are left untouched; the utility never
 deletes or moves them automatically.
 
+## Upgrading from v1.1
+
+Version 1.2 renames the project and userscript to **Instagram Media Capture
+for Tampermonkey**. Existing installations should use Tampermonkey's update
+check rather than installing a second copy. The legacy update endpoint and
+userscript namespace remain available so the installed script can update and
+adopt the new display name in place. If migration does not occur, disable or
+remove the old copy before installing the new userscript; do not enable both.
+
 ## Development
 
 The repository uses modular ES source and bundles it into one installable userscript. End users install only the generated `.user.js` file; Node.js is required only for development.
@@ -93,7 +102,7 @@ The repository uses modular ES source and bundles it into one installable usersc
     npm install
     npm run check
 
-`npm run check` runs the complete Node test suite, builds `dist/instagram-capture.user.js`, and copies the verified installable artifact to `release/instagram-capture.user.js`.
+`npm run check` runs the complete Node test suite, builds `dist/instagram-media-capture.user.js`, and copies the verified installable artifact to `release/instagram-media-capture.user.js`.
 
 ## Project documentation
 
