@@ -1,5 +1,11 @@
 # Instagram Capture Utility
 
+[![License: MIT](https://img.shields.io/github/license/adojos/tm-save-instagram-media)](LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/adojos/tm-save-instagram-media)](https://github.com/adojos/tm-save-instagram-media/releases/latest)
+[![Repository size](https://img.shields.io/github/repo-size/adojos/tm-save-instagram-media)](https://github.com/adojos/tm-save-instagram-media)
+[![Primary language](https://img.shields.io/github/languages/top/adojos/tm-save-instagram-media)](src)
+[![Tampermonkey userscript](https://img.shields.io/badge/Tampermonkey-userscript-00485B?logo=tampermonkey&logoColor=white)](https://raw.githubusercontent.com/adojos/tm-save-instagram-media/main/release/instagram-capture.user.js)
+
 A Tampermonkey userscript for saving Instagram images, mixed-media carousels, reels, captions, and source metadata.
 
 ## Install
