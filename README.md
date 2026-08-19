@@ -89,11 +89,15 @@ deletes or moves them automatically.
 ## Upgrading from v1.1
 
 Version 1.2 renames the project and userscript to **Instagram Media Capture
-for Tampermonkey**. Existing installations should use Tampermonkey's update
-check rather than installing a second copy. The legacy update endpoint and
-userscript namespace remain available so the installed script can update and
-adopt the new display name in place. If migration does not occur, disable or
-remove the old copy before installing the new userscript; do not enable both.
+for Tampermonkey**. Because GitHub's former raw-content URL does not reliably
+follow a renamed repository, this upgrade requires a one-time reinstall:
+
+1. disable or remove **Instagram Capture Utility** in Tampermonkey,
+2. install the new userscript from the link above, and
+3. confirm that only the newly named script is enabled.
+
+The existing browser-side configuration database keeps its historical name,
+so reinstalling the userscript does not deliberately reset cached settings.
 
 ## Development
 

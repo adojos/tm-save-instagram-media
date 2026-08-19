@@ -30,10 +30,10 @@ For continuous local builds:
 
 Watch mode updates only `dist/instagram-media-capture.user.js`; run `npm run build` before committing a release artifact.
 
-The build also writes `release/instagram-capture.user.js` as a legacy update
-endpoint for installations created before the v1.2 rename. Keep that file and
-the legacy userscript `@namespace` unchanged unless a separately planned
-migration replaces them.
+The legacy userscript `@namespace` is intentionally retained to avoid changing
+the script's historical identity. The v1.2 repository rename requires a
+one-time reinstall because GitHub's former raw-content URL does not reliably
+follow the renamed repository. Future releases use the canonical file above.
 
 ## Runtime behavior
 

@@ -17,12 +17,3 @@ test("userscript release metadata matches the application version and canonical 
   assert.match(metadata, /^\/\/ @downloadURL\s+https:\/\/raw\.githubusercontent\.com\/adojos\/tampermonkey-instagram-media-capture\/main\/release\/instagram-media-capture\.user\.js$/mu);
   assert.match(metadata, /^\/\/ @updateURL\s+https:\/\/raw\.githubusercontent\.com\/adojos\/tampermonkey-instagram-media-capture\/main\/release\/instagram-media-capture\.user\.js$/mu);
 });
-
-test("canonical and legacy release paths contain the same userscript", async () => {
-  const [canonical, legacy] = await Promise.all([
-    readFile(new URL("../release/instagram-media-capture.user.js", import.meta.url), "utf8"),
-    readFile(new URL("../release/instagram-capture.user.js", import.meta.url), "utf8"),
-  ]);
-
-  assert.equal(legacy, canonical);
-});
