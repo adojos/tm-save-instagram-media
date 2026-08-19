@@ -112,7 +112,6 @@ The repository uses modular ES source and bundles it into one installable usersc
 
 ## Project documentation
 
-- [Engineering guidance](docs/Agents.md)
 - [Requirements](docs/Requirements.md)
 - [Architecture](docs/Architecture.md)
 - [Architecture decisions](docs/Decisions.md)
