@@ -2,7 +2,7 @@
 
 ## Project
 
-Instagram Capture Utility
+Instagram Media Capture for Tampermonkey
 
 ## Purpose
 

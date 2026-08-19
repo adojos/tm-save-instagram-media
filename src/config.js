@@ -1,6 +1,6 @@
 export const APP_CONFIG = Object.freeze({
-  name: "Instagram Capture Utility",
-  version: "1.1.1",
+  name: "Instagram Media Capture for Tampermonkey",
+  version: "1.2.0",
   mediaDirectoryName: "Media",
   instagramDirectoryName: "Instagram",
   settingsSchemaVersion: 2,

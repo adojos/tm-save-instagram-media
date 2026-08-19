@@ -1,4 +1,4 @@
-# Instagram Capture Utility — Architecture
+# Instagram Media Capture for Tampermonkey — Architecture
 
 ## 1. Architectural Goal
 
@@ -712,6 +712,6 @@ Even if eventually bundled into one userscript:
         logging.js
 
     build/
-      instagram-capture.user.js
+      instagram-media-capture.user.js
 
 This structure is conceptual and may be adapted to the chosen build tooling.

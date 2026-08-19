@@ -1,4 +1,4 @@
-# Instagram Capture Utility — Requirements
+# Instagram Media Capture for Tampermonkey — Requirements
 
 ## 1. Purpose
 
