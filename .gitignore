@@ -24,3 +24,6 @@ Desktop.ini
 
 # Historical brainstorming material retained locally
 docs/chat session.docx
+
+# Local agent instructions
+docs/Agents.md
